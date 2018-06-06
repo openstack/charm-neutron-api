@@ -64,6 +64,7 @@ TO_PATCH = [
     'get_l2population',
     'get_overlay_network_type',
     'is_clustered',
+    'is_leader',
     'is_elected_leader',
     'is_qos_requested_and_valid',
     'is_vlan_trunking_requested_and_valid',
@@ -90,7 +91,7 @@ TO_PATCH = [
     'remove_old_packages',
     'services',
     'service_restart',
-    'generate_ha_relation_data',
+    'is_db_initialised',
 ]
 NEUTRON_CONF_DIR = "/etc/neutron"
 
@@ -814,7 +815,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'kilo'
         hooks.conditional_neutron_migration()
-        self.migrate_neutron_database.assert_called_with()
+        self.migrate_neutron_database.assert_called()
 
     def test_conditional_neutron_migration_leader_icehouse(self):
         self.test_relation.set({
@@ -848,4 +849,18 @@ class NeutronAPIHooksTests(CharmTestCase):
 
     def test_designate_peer_departed(self):
         self._call_hook('external-dns-relation-departed')
+        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+
+    def test_infoblox_peer_changed(self):
+        self.is_db_initialised.return_value = True
+        self.test_relation.set({
+            'dc_id': '0',
+        })
+        self.os_release.return_value = 'queens'
+        self.relation_ids.side_effect = self._fake_relids
+        self._call_hook('infoblox-neutron-relation-changed')
+        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+
+    def test_infoblox_peer_departed(self):
+        self._call_hook('infoblox-neutron-relation-departed')
         self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
