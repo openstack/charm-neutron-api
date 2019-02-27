@@ -11,3 +11,5 @@ resume:
     Resume neutron-api services.
     If the neutron-api deployment is clustered using the hacluster charm, the
     corresponding hacluster unit on the node must be resumed as well.
+security-checklist:
+  description: Validate the running configuration against the OpenStack security guides checklist
