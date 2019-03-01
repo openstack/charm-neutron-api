@@ -1,7 +1,0 @@
-[report]
-# Regexes for lines to exclude from consideration
-exclude_lines =
-    if __name__ == .__main__.:
-    except UnregisteredHookError as e:
-include=
-    hooks/neutron_*
