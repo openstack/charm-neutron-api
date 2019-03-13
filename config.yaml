@@ -330,6 +330,9 @@ options:
     description: |
       Minimum number of l3 agents to host a router. Only used when enable-l3ha
       is True.
+      .
+      NOTE: This option was deprecated in Newton and removed in Ocata so will
+      have no effect from then onwards.
   allow-automatic-l3agent-failover:
     type: boolean
     default: False
