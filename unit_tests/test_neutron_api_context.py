@@ -953,9 +953,22 @@ class NeutronCCContextTest(CharmTestCase):
         service_plugins = (
             'router,firewall,metering,segments,'
             'neutron_dynamic_routing.services.bgp.bgp_plugin.BgpPlugin,'
-            'neutron_lbaas.services.loadbalancer.plugin.LoadBalancerPluginv2')
-        self.assertEqual(context.NeutronCCContext()()['service_plugins'],
+            'lbaasv2')
+        ncc_context = context.NeutronCCContext()()
+        self.assertEqual(ncc_context['service_plugins'],
                          service_plugins)
+
+        # stein
+        self.os_release.return_value = 'stein'
+        service_plugins = (
+            'router,firewall_v2,metering,segments,'
+            'neutron_dynamic_routing.services.bgp.bgp_plugin.BgpPlugin,'
+            'lbaasv2')
+        ncc_context = context.NeutronCCContext()()
+        self.assertEqual(ncc_context['service_plugins'],
+                         service_plugins)
+        self.assertTrue(ncc_context['firewall_v2'])
+
         # rocky and related to charm through neutron-load-balancer interface
         self.os_release.return_value = 'rocky'
         service_plugins = (

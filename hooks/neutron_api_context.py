@@ -567,19 +567,23 @@ class NeutronCCContext(context.NeutronContext):
                 'rocky': ['router', 'firewall', 'metering', 'segments',
                           ('neutron_dynamic_routing.'
                            'services.bgp.bgp_plugin.BgpPlugin')],
+                'stein': ['router', 'firewall_v2', 'metering', 'segments',
+                          ('neutron_dynamic_routing.'
+                           'services.bgp.bgp_plugin.BgpPlugin')],
             }
             if cmp_release >= 'rocky':
                 if ctxt.get('load_balancer_name', None):
                     # TODO(fnordahl): Remove when ``neutron_lbaas`` is retired
-                    service_plugins['rocky'].append('lbaasv2-proxy')
+                    service_plugins[release].append('lbaasv2-proxy')
                 else:
                     # TODO(fnordahl): Remove fall-back in next charm release
-                    service_plugins['rocky'].append(
-                        'neutron_lbaas.services.loadbalancer.plugin.'
-                        'LoadBalancerPluginv2')
+                    service_plugins[release].append('lbaasv2')
+
+            if cmp_release >= 'stein':
+                ctxt['firewall_v2'] = True
 
             ctxt['service_plugins'] = service_plugins.get(
-                release, service_plugins['rocky'])
+                release, service_plugins['stein'])
 
             if is_nsg_logging_enabled():
                 ctxt['service_plugins'].append('log')
