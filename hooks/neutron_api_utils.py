@@ -565,12 +565,59 @@ def do_openstack_upgrade(configs):
 
     # set CONFIGS to load templates from new release
     configs.set_release(openstack_release=new_os_rel)
+    # write all configurations for any new parts required for
+    # the new release.
+    configs.write_all()
     # Before kilo it's nova-cloud-controllers job
     if is_elected_leader(CLUSTER_RES):
         # Stamping seems broken and unnecessary in liberty (Bug #1536675)
         if CompareOpenStackReleases(os_release('neutron-common')) < 'liberty':
             stamp_neutron_database(cur_os_rel)
         migrate_neutron_database(upgrade=True)
+        if CompareOpenStackReleases(new_os_rel) >= 'stein':
+            fwaas_migrate_v1_to_v2()
+
+
+# TODO: make an attribute of the context for shared usage
+def get_db_url():
+    '''
+    Retrieve the Database URL for the Neutron DB
+
+    :returns: oslo.db formatted connection string for the DB
+    :rtype: str
+    '''
+    ctxt = context.SharedDBContext(
+        user=config('database-user'),
+        database=config('database'),
+        ssl_dir=NEUTRON_CONF_DIR)()
+    # NOTE: core database url
+    database_url = (
+        "{database_type}://"
+        "{database_user}:{database_password}@"
+        "{database_host}/{database}".format(**ctxt)
+    )
+    # NOTE: optional SSL configuration
+    if ctxt.get('database_ssl_ca'):
+        ssl_args = [
+            'ssl_ca={}'.format(ctxt['database_ssl_ca'])
+        ]
+        if ctxt.get('database_ssl_cert'):
+            ssl_args.append('ssl_cert={}'.format(ctxt['database_ssl_cert']))
+            ssl_args.append('ssl_key={}'.format(ctxt['database_ssl_key']))
+        database_url = "{}?{}".format(
+            database_url,
+            "&".join(ssl_args)
+        )
+    return database_url
+
+
+def fwaas_migrate_v1_to_v2():
+    '''Migrate any existing v1 firewall definitions to v2'''
+    cmd = [
+        'neutron-fwaas-migrate-v1-to-v2',
+        '--neutron-db-connection={}'.format(get_db_url())
+    ]
+    subprocess.check_call(cmd)
 
 
 def stamp_neutron_database(release):

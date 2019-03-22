@@ -315,6 +315,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         nutils.do_openstack_upgrade(configs)
         self.assertFalse(stamp_neutron_db.called)
 
+    @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
     @patch.object(nutils, 'migrate_neutron_database')
@@ -322,7 +323,8 @@ class TestNeutronAPIUtils(CharmTestCase):
     def test_do_openstack_upgrade_rocky(self,
                                         stamp_neutron_db,
                                         migrate_neutron_db,
-                                        gsrc):
+                                        gsrc,
+                                        fwaas_migrate_v1_to_v2):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'rocky'
         self.config.side_effect = self.test_config.get
@@ -336,6 +338,34 @@ class TestNeutronAPIUtils(CharmTestCase):
         self.apt_autoremove.assert_called_with(purge=True, fatal=True)
         self.filter_missing_packages.assert_called_with(nutils.PURGE_PACKAGES)
         self.assertFalse(stamp_neutron_db.called)
+        fwaas_migrate_v1_to_v2.assert_not_called()
+        configs.write_all.assert_called_once_with()
+
+    @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
+    @patch.object(charmhelpers.contrib.openstack.utils,
+                  'get_os_codename_install_source')
+    @patch.object(nutils, 'migrate_neutron_database')
+    @patch.object(nutils, 'stamp_neutron_database')
+    def test_do_openstack_upgrade_stein(self,
+                                        stamp_neutron_db,
+                                        migrate_neutron_db,
+                                        gsrc,
+                                        fwaas_migrate_v1_to_v2):
+        self.is_elected_leader.return_value = True
+        self.os_release.return_value = 'stein'
+        self.config.side_effect = self.test_config.get
+        self.test_config.set('openstack-origin', 'cloud:bionic-stein')
+        gsrc.return_value = 'rocky'
+        self.get_os_codename_install_source.return_value = 'stein'
+        self.filter_missing_packages.return_value = ['python-neutron']
+        configs = MagicMock()
+        nutils.do_openstack_upgrade(configs)
+        self.apt_purge.assert_called_with(['python-neutron'], fatal=True)
+        self.apt_autoremove.assert_called_with(purge=True, fatal=True)
+        self.filter_missing_packages.assert_called_with(nutils.PURGE_PACKAGES)
+        self.assertFalse(stamp_neutron_db.called)
+        fwaas_migrate_v1_to_v2.assert_called_once_with()
+        configs.write_all.assert_called_once_with()
 
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
@@ -732,3 +762,57 @@ class TestNeutronAPIUtils(CharmTestCase):
             asf.assert_called_once_with('some-config')
             # ports=None whilst port checks are disabled.
             f.assert_called_once_with('assessor', services='s1', ports=None)
+
+    @patch.object(nutils, 'subprocess')
+    @patch.object(nutils, 'get_db_url')
+    def test_fwaas_migrate_v1_to_v2(self,
+                                    get_db_url,
+                                    subprocess):
+        get_db_url.return_value = 'mysql://localhost:80/testdb'
+        nutils.fwaas_migrate_v1_to_v2()
+        subprocess.check_call.assert_called_with([
+            'neutron-fwaas-migrate-v1-to-v2',
+            '--neutron-db-connection=mysql://localhost:80/testdb'
+        ])
+
+    @patch.object(nutils, 'config')
+    @patch.object(nutils, 'context')
+    def test_get_db_url(self,
+                        mock_context,
+                        mock_config):
+        mock_db_context = MagicMock()
+        mock_db_context.return_value = {
+            'database_type': 'pymysql+mysql',
+            'database_user': 'testuser',
+            'database_host': 'testhost',
+            'database_password': 'testpassword',
+            'database': 'testdatabase',
+        }
+        mock_context.SharedDBContext.return_value = mock_db_context
+        self.assertEqual(
+            nutils.get_db_url(),
+            "pymysql+mysql://testuser:testpassword@testhost/testdatabase"
+        )
+
+    @patch.object(nutils, 'config')
+    @patch.object(nutils, 'context')
+    def test_get_db_url_ssl(self,
+                            mock_context,
+                            mock_config):
+        mock_db_context = MagicMock()
+        mock_db_context.return_value = {
+            'database_type': 'pymysql+mysql',
+            'database_user': 'testuser',
+            'database_host': 'testhost',
+            'database_password': 'testpassword',
+            'database': 'testdatabase',
+            'database_ssl_ca': 'foo',
+            'database_ssl_cert': 'bar',
+            'database_ssl_key': 'baz',
+        }
+        mock_context.SharedDBContext.return_value = mock_db_context
+        self.assertEqual(
+            nutils.get_db_url(),
+            "pymysql+mysql://testuser:testpassword@testhost/testdatabase"
+            "?ssl_ca=foo&ssl_cert=bar&ssl_key=baz"
+        )
