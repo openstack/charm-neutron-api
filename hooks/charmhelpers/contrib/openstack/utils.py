@@ -194,7 +194,7 @@ SWIFT_CODENAMES = OrderedDict([
     ('rocky',
         ['2.18.0', '2.19.0']),
     ('stein',
-        ['2.19.0']),
+        ['2.20.0']),
 ])
 
 # >= Liberty version->codename mapping
@@ -656,7 +656,7 @@ def openstack_upgrade_available(package):
     else:
         avail_vers = get_os_version_install_source(src)
     apt.init()
-    return apt.version_compare(avail_vers, cur_vers) == 1
+    return apt.version_compare(avail_vers, cur_vers) >= 1
 
 
 def ensure_block_device(block_device):
