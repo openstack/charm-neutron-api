@@ -408,7 +408,7 @@ class NeutronCCContext(context.NeutronContext):
         ctxt['external_network'] = config('neutron-external-network')
         release = os_release('neutron-server')
         cmp_release = CompareOpenStackReleases(release)
-        if config('neutron-plugin') in ['vsp']:
+        if config('neutron-plugin') == 'vsp' and cmp_release < 'newton':
             _config = config()
             for k, v in _config.items():
                 if k.startswith('vsd'):
