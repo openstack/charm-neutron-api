@@ -22,6 +22,7 @@ series:
   - xenial
   - bionic
   - cosmic
+  - disco
   - trusty
 provides:
   nrpe-external-master:
