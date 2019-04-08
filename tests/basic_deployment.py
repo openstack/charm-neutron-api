@@ -52,7 +52,7 @@ class NeutronAPIBasicDeployment(OpenStackAmuletDeployment):
         services = ("neutron-server", "apache2", "haproxy")
         u.get_unit_process_ids(
             {self.neutron_api_sentry: services},
-            expect_success=should_run)
+            expect_success=should_run, pgrep_full=self.pgrep_full)
 
     def _add_services(self):
         """Add services
@@ -154,6 +154,13 @@ class NeutronAPIBasicDeployment(OpenStackAmuletDeployment):
         self.neutron_api_sentry = self.d.sentry['neutron-api'][0]
         self.neutron_ovs_sentry = self.d.sentry['neutron-openvswitch'][0]
         self.nova_compute_sentry = self.d.sentry['nova-compute'][0]
+
+        # pidof is failing to find neutron-server on stein
+        # use pgrep instead.
+        if self._get_openstack_release() >= self.bionic_stein:
+            self.pgrep_full = True
+        else:
+            self.pgrep_full = False
 
         u.log.debug('openstack release val: {}'.format(
             self._get_openstack_release()))
@@ -579,11 +586,13 @@ class NeutronAPIBasicDeployment(OpenStackAmuletDeployment):
 
         for s, conf_file in services.iteritems():
             u.log.debug("Checking that service restarted: {}".format(s))
-            if not u.validate_service_config_changed(sentry, mtime, s,
-                                                     conf_file,
-                                                     retry_count=4,
-                                                     retry_sleep_time=20,
-                                                     sleep_time=20):
+            if not u.validate_service_config_changed(
+                    sentry, mtime, s,
+                    conf_file,
+                    retry_count=4,
+                    retry_sleep_time=20,
+                    sleep_time=20,
+                    pgrep_full=self.pgrep_full):
                 self.d.configure(juju_service, set_default)
                 msg = "service {} didn't restart after config change".format(s)
                 amulet.raise_status(amulet.FAIL, msg=msg)
