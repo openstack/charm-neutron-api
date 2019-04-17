@@ -32,7 +32,7 @@ class NeutronAPIBasicDeployment(OpenStackAmuletDeployment):
     """Amulet tests on a basic neutron-api deployment."""
 
     def __init__(self, series, openstack=None, source=None,
-                 stable=False):
+                 stable=True):
         """Deploy the entire test environment."""
         super(NeutronAPIBasicDeployment, self).__init__(series, openstack,
                                                         source, stable)
