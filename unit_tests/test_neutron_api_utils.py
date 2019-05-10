@@ -223,6 +223,26 @@ class TestNeutronAPIUtils(CharmTestCase):
         ])
         self.assertEqual(_restart_map, expect)
 
+    @patch.object(nutils.os.path, 'isdir')
+    @patch.object(nutils.os.path, 'exists')
+    def test_restart_map_ssl(self, mock_path_exists, mock_path_isdir):
+        self.os_release.return_value = 'havana'
+        mock_path_exists.return_value = False
+        mock_path_isdir.return_value = True
+        _restart_map = nutils.restart_map()
+        ML2CONF = "/etc/neutron/plugins/ml2/ml2_conf.ini"
+        expect = OrderedDict([
+            (nutils.NEUTRON_CONF, ['neutron-server']),
+            (nutils.NEUTRON_DEFAULT, ['neutron-server']),
+            (nutils.API_PASTE_INI, ['neutron-server']),
+            (nutils.APACHE_CONF, ['apache2']),
+            (nutils.HAPROXY_CONF, ['haproxy']),
+            (ML2CONF, ['neutron-server']),
+            ('{}/*'.format(nutils.APACHE_SSL_DIR),
+             ['apache2', 'neutron-server']),
+        ])
+        self.assertEqual(_restart_map, expect)
+
     @patch('os.path.exists')
     def test_register_configs(self, mock_path_exists):
         self.os_release.return_value = 'havana'

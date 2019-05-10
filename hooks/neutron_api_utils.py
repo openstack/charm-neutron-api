@@ -141,6 +141,7 @@ NEUTRON_VPNAAS_CONF = '%s/neutron_vpnaas.conf' % NEUTRON_CONF_DIR
 HAPROXY_CONF = '/etc/haproxy/haproxy.cfg'
 APACHE_CONF = '/etc/apache2/sites-available/openstack_https_frontend'
 APACHE_24_CONF = '/etc/apache2/sites-available/openstack_https_frontend.conf'
+APACHE_SSL_DIR = '/etc/apache2/ssl/neutron'
 NEUTRON_DEFAULT = '/etc/default/neutron-server'
 CA_CERT_PATH = '/usr/local/share/ca-certificates/keystone_juju_ca_cert.crt'
 MEMCACHED_CONF = '/etc/memcached.conf'
@@ -511,9 +512,13 @@ def register_configs(release=None):
 
 
 def restart_map():
-    return OrderedDict([(cfg, v['services'])
-                        for cfg, v in resource_map().items()
-                        if v['services']])
+    restart_map = OrderedDict([(cfg, v['services'])
+                               for cfg, v in resource_map().items()
+                               if v['services']])
+    if os.path.isdir(APACHE_SSL_DIR):
+        restart_map['{}/*'.format(APACHE_SSL_DIR)] = ['apache2',
+                                                      'neutron-server']
+    return restart_map
 
 
 def services():
