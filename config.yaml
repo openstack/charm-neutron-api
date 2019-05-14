@@ -302,6 +302,10 @@ options:
       Populate the forwarding tables of virtual switches (LinuxBridge or OVS),
       to decrease broadcast traffics inside the physical networks fabric while
       using overlays networks (VXLan, GRE).
+
+      WARNING: Care should be taken when changing this configuration at runtime
+      as there will be a temporary data-plane outage while the network adapters are
+      reconfigured.
   manage-neutron-plugin-legacy-mode:
     type: boolean
     default: True
