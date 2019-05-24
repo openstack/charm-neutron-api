@@ -410,7 +410,7 @@ def determine_packages(source=None):
         if release == 'kilo' or cmp_release >= 'mitaka':
             packages.append('python-networking-hyperv')
 
-    if config('neutron-plugin') == 'vsp':
+    if config('neutron-plugin') == 'vsp' and cmp_release < 'newton':
         nuage_pkgs = config('nuage-packages').split()
         packages.extend(nuage_pkgs)
 
