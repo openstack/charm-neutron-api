@@ -854,7 +854,7 @@ class NeutronAMQPContext(context.AMQPContext):
         # TODO (dparv) The class to be removed in next charm release
         # and from BASE_RESOURCE_MAP neutron_api_utils.py as well
         if not context:
-            return
+            return context
         context['notification_topics'] = ','.join(NOTIFICATION_TOPICS)
         return context
 
