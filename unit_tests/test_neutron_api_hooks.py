@@ -87,6 +87,7 @@ TO_PATCH = [
     'get_relation_ip',
     'generate_ha_relation_data',
     'is_nsg_logging_enabled',
+    'is_nfg_logging_enabled',
     'remove_old_packages',
     'services',
     'service_restart',
@@ -135,6 +136,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         self.test_config.set('neutron-plugin', 'ovs')
         self.neutron_plugin_attribute.side_effect = _mock_nuage_npa
         self.is_nsg_logging_enabled.return_value = False
+        self.is_nfg_logging_enabled.return_value = False
 
     def _fake_relids(self, rel_name):
         return [randrange(100) for _count in range(2)]
@@ -521,6 +523,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'service_host': None,
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
+            'enable-nfg-logging': False,
         }
         self.is_qos_requested_and_valid.return_value = False
         self.is_vlan_trunking_requested_and_valid.return_value = False
@@ -563,6 +566,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'service_host': None,
             'neutron-api-ready': 'no',
             'enable-nsg-logging': True,
+            'enable-nfg-logging': False,
         }
 
         self.is_qos_requested_and_valid.return_value = False
@@ -582,6 +586,54 @@ class NeutronAPIHooksTests(CharmTestCase):
             relation_id=None,
             **_relation_data
         )
+
+    def test_neutron_plugin_api_relation_joined_nfg_logging(self):
+        self.unit_get.return_value = '172.18.18.18'
+        self.IdentityServiceContext.return_value = \
+            DummyContext(return_value={})
+        _relation_data = {
+            'neutron-security-groups': False,
+            'enable-dvr': False,
+            'enable-l3ha': False,
+            'enable-qos': False,
+            'enable-vlan-trunking': False,
+            'addr': '172.18.18.18',
+            'polling-interval': 2,
+            'rpc-response-timeout': 60,
+            'report-interval': 30,
+            'l2-population': False,
+            'overlay-network-type': 'vxlan',
+            'service_protocol': None,
+            'auth_protocol': None,
+            'service_tenant': None,
+            'service_port': None,
+            'region': 'RegionOne',
+            'service_password': None,
+            'auth_port': None,
+            'auth_host': None,
+            'service_username': None,
+            'service_host': None,
+            'neutron-api-ready': 'no',
+            'enable-nsg-logging': False,
+            'enable-nfg-logging': True,
+        }
+
+        self.is_qos_requested_and_valid.return_value = False
+        self.is_vlan_trunking_requested_and_valid.return_value = False
+        self.get_dvr.return_value = False
+        self.get_l3ha.return_value = False
+        self.get_l2population.return_value = False
+        self.get_overlay_network_type.return_value = 'vxlan'
+        self.get_dns_domain.return_value = ''
+
+        self.test_config.set('enable-firewall-group-logging', True)
+        self.is_nfg_logging_enabled.return_value = True
+
+        self._call_hook('neutron-plugin-api-relation-joined')
+
+        self.relation_set.assert_called_with(
+            relation_id=None,
+            **_relation_data)
 
     def test_neutron_plugin_api_relation_joined_dvr(self):
         self.unit_get.return_value = '172.18.18.18'
@@ -611,6 +663,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'service_host': None,
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
+            'enable-nfg-logging': False,
         }
         self.is_qos_requested_and_valid.return_value = False
         self.is_vlan_trunking_requested_and_valid.return_value = False
@@ -653,6 +706,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'service_host': None,
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
+            'enable-nfg-logging': False,
         }
         self.is_qos_requested_and_valid.return_value = False
         self.is_vlan_trunking_requested_and_valid.return_value = False
@@ -697,6 +751,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'service_host': None,
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
+            'enable-nfg-logging': False,
         }
         self.is_qos_requested_and_valid.return_value = False
         self.is_vlan_trunking_requested_and_valid.return_value = False
@@ -740,6 +795,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'dns-domain': 'openstack.example.',
             'enable-nsg-logging': False,
+            'enable-nfg-logging': False,
         }
         self.is_qos_requested_and_valid.return_value = False
         self.is_vlan_trunking_requested_and_valid.return_value = False

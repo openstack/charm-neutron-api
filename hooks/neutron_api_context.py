@@ -245,6 +245,22 @@ def is_nsg_logging_enabled():
     return False
 
 
+def is_nfg_logging_enabled():
+    """
+    Check if Neutron firewall groups logging should be enabled.
+    """
+    if config('enable-firewall-group-logging'):
+
+        if CompareOpenStackReleases(os_release('neutron-server')) < 'stein':
+            log("The logging option is only supported on Stein or later",
+                ERROR)
+            return False
+
+        return True
+
+    return False
+
+
 def is_vlan_trunking_requested_and_valid():
     """Check whether VLAN trunking should be enabled by checking whether
        it has been requested and, if it has, is it supported in the current
@@ -585,7 +601,7 @@ class NeutronCCContext(context.NeutronContext):
             ctxt['service_plugins'] = service_plugins.get(
                 release, service_plugins['stein'])
 
-            if is_nsg_logging_enabled():
+            if is_nsg_logging_enabled() or is_nfg_logging_enabled():
                 ctxt['service_plugins'].append('log')
 
             if is_qos_requested_and_valid():

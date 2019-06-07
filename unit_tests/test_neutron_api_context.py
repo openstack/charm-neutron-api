@@ -250,6 +250,17 @@ class GeneralTests(CharmTestCase):
         self.assertEqual(context.get_ml2_mechanism_drivers(),
                          'openvswitch,hyperv,sriovnicswitch')
 
+    def test_is_nfg_logging_enabled(self):
+        self.os_release.return_value = 'stein'
+        self.test_config.set('enable-firewall-group-logging', True)
+        self.assertTrue(context.is_nfg_logging_enabled())
+        self.os_release.return_value = 'stein'
+        self.test_config.set('enable-firewall-group-logging', False)
+        self.assertFalse(context.is_nfg_logging_enabled())
+        self.os_release.return_value = 'queens'
+        self.test_config.set('enable-firewall-group-logging', True)
+        self.assertFalse(context.is_nfg_logging_enabled())
+
 
 class IdentityServiceContext(CharmTestCase):
 
