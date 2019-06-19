@@ -1488,7 +1488,7 @@ def is_broker_action_done(action, rid=None, unit=None):
     @param action: name of action to be performed
     @returns True if action complete otherwise False
     """
-    rdata = relation_get(rid, unit) or {}
+    rdata = relation_get(rid=rid, unit=unit) or {}
     broker_rsp = rdata.get(get_broker_rsp_key())
     if not broker_rsp:
         return False
@@ -1510,7 +1510,7 @@ def mark_broker_action_done(action, rid=None, unit=None):
     @param action: name of action to be performed
     @returns None
     """
-    rdata = relation_get(rid, unit) or {}
+    rdata = relation_get(rid=rid, unit=unit) or {}
     broker_rsp = rdata.get(get_broker_rsp_key())
     if not broker_rsp:
         return

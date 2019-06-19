@@ -294,8 +294,10 @@ class OpenStackAmuletDeployment(AmuletDeployment):
             ('bionic', None): self.bionic_queens,
             ('bionic', 'cloud:bionic-rocky'): self.bionic_rocky,
             ('bionic', 'cloud:bionic-stein'): self.bionic_stein,
+            ('bionic', 'cloud:bionic-train'): self.bionic_train,
             ('cosmic', None): self.cosmic_rocky,
             ('disco', None): self.disco_stein,
+            ('eoan', None): self.eoan_train,
         }
         return releases[(self.series, self.openstack)]
 
@@ -313,6 +315,7 @@ class OpenStackAmuletDeployment(AmuletDeployment):
             ('bionic', 'queens'),
             ('cosmic', 'rocky'),
             ('disco', 'stein'),
+            ('eoan', 'train'),
         ])
         if self.openstack:
             os_origin = self.openstack.split(':')[1]

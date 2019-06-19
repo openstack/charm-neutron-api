@@ -58,7 +58,7 @@ def main():
             'validate-uses-tls-for-glance',
         ],
     }
-    conf = configparser.ConfigParser()
+    conf = configparser.ConfigParser(strict=False)
     conf.read("/etc/neutron/neutron.conf")
     config['neutron_config'] = dict(conf)
     return audits.action_parse_results(audits.run(config))

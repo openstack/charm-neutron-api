@@ -562,6 +562,7 @@ class NeutronAPIBasicDeployment(OpenStackAmuletDeployment):
         data = amulet.actions.get_action_output(action_id, full_output=True)
         assert data.get(u"status") == "failed", \
             "Security check is expected to not pass by default"
+        assert data.get(u"results") is not None
 
     def test_900_restart_on_config_change(self):
         """Verify that the specified services are restarted when the

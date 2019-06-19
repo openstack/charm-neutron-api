@@ -217,19 +217,35 @@ def full_restart():
         service('force-reload-kmod', 'openvswitch-switch')
 
 
-def enable_ipfix(bridge, target):
-    '''Enable IPfix on bridge to target.
+def enable_ipfix(bridge, target,
+                 cache_active_timeout=60,
+                 cache_max_flows=128,
+                 sampling=64):
+    '''Enable IPFIX on bridge to target.
     :param bridge: Bridge to monitor
-    :param target: IPfix remote endpoint
+    :param target: IPFIX remote endpoint
+    :param cache_active_timeout: The maximum period in seconds for
+                                 which an IPFIX flow record is cached
+                                 and aggregated before being sent
+    :param cache_max_flows: The maximum number of IPFIX flow records
+                            that can be cached at a time
+    :param sampling: The rate at which packets should be sampled and
+                     sent to each target collector
     '''
-    cmd = ['ovs-vsctl', 'set', 'Bridge', bridge, 'ipfix=@i', '--',
-           '--id=@i', 'create', 'IPFIX', 'targets="{}"'.format(target)]
+    cmd = [
+        'ovs-vsctl', 'set', 'Bridge', bridge, 'ipfix=@i', '--',
+        '--id=@i', 'create', 'IPFIX',
+        'targets="{}"'.format(target),
+        'sampling={}'.format(sampling),
+        'cache_active_timeout={}'.format(cache_active_timeout),
+        'cache_max_flows={}'.format(cache_max_flows),
+    ]
     log('Enabling IPfix on {}.'.format(bridge))
     subprocess.check_call(cmd)
 
 
 def disable_ipfix(bridge):
-    '''Diable IPfix on target bridge.
+    '''Diable IPFIX on target bridge.
     :param bridge: Bridge to modify
     '''
     cmd = ['ovs-vsctl', 'clear', 'Bridge', bridge, 'ipfix']
