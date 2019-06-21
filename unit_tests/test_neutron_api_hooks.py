@@ -525,6 +525,8 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
+            'global-physnet-mtu': 1500,
+            'physical-network-mtus': None,
         }
         self.is_qos_requested_and_valid.return_value = False
         self.is_vlan_trunking_requested_and_valid.return_value = False
@@ -568,6 +570,8 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': True,
             'enable-nfg-logging': False,
+            'global-physnet-mtu': 1500,
+            'physical-network-mtus': None,
         }
 
         self.is_qos_requested_and_valid.return_value = False
@@ -617,6 +621,8 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
             'enable-nfg-logging': True,
+            'global-physnet-mtu': 1500,
+            'physical-network-mtus': None,
         }
 
         self.is_qos_requested_and_valid.return_value = False
@@ -665,6 +671,8 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
+            'global-physnet-mtu': 1500,
+            'physical-network-mtus': None,
         }
         self.is_qos_requested_and_valid.return_value = False
         self.is_vlan_trunking_requested_and_valid.return_value = False
@@ -708,6 +716,8 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
+            'global-physnet-mtu': 1500,
+            'physical-network-mtus': None,
         }
         self.is_qos_requested_and_valid.return_value = False
         self.is_vlan_trunking_requested_and_valid.return_value = False
@@ -753,6 +763,8 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
+            'global-physnet-mtu': 1500,
+            'physical-network-mtus': None,
         }
         self.is_qos_requested_and_valid.return_value = False
         self.is_vlan_trunking_requested_and_valid.return_value = False
@@ -797,6 +809,8 @@ class NeutronAPIHooksTests(CharmTestCase):
             'dns-domain': 'openstack.example.',
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
+            'global-physnet-mtu': 1500,
+            'physical-network-mtus': None,
         }
         self.is_qos_requested_and_valid.return_value = False
         self.is_vlan_trunking_requested_and_valid.return_value = False

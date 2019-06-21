@@ -499,6 +499,8 @@ def neutron_plugin_api_relation_joined(rid=None):
             'polling-interval': config('polling-interval'),
             'rpc-response-timeout': config('rpc-response-timeout'),
             'report-interval': config('report-interval'),
+            'global-physnet-mtu': config('global-physnet-mtu'),
+            'physical-network-mtus': config('physical-network-mtus'),
         }
 
         # Provide this value to relations since it needs to be set in multiple
