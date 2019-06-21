@@ -1,0 +1,11 @@
+[infoblox]
+cloud_data_center_id = {{ cloud_data_center_id }}
+
+[infoblox-dc:{{ cloud_data_center_id }}]
+grid_master_host = {{ grid_master_host }}
+grid_master_name = {{ grid_master_name }}
+admin_user_name = {{ infoblox_admin_user_name }}
+admin_password = {{ infoblox_admin_password }}
+wapi_version = {{ wapi_version }}
+wapi_max_results = {{ wapi_max_results }}
+wapi_paging = {{ wapi_paging }}

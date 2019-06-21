@@ -879,3 +879,43 @@ class DesignateContext(context.OSContextGenerator):
                 ctxt['ipv6_ptr_zone_prefix_size'] = (
                     config('ipv6-ptr-zone-prefix-size'))
         return ctxt
+
+
+class NeutronInfobloxContext(context.OSContextGenerator):
+    '''Infoblox IPAM context for Neutron API'''
+    interfaces = ['infoblox-neutron']
+
+    def __call__(self):
+        ctxt = {}
+        rdata = {}
+        for rid in relation_ids('infoblox-neutron'):
+            if related_units(rid) and not rdata:
+                for unit in related_units(rid):
+                    rdata = relation_get(rid=rid, unit=unit)
+                    ctxt['cloud_data_center_id'] = rdata.get('dc_id')
+                    break
+        if ctxt.get('cloud_data_center_id') is not None:
+            if not self.check_requirements(rdata):
+                log('Missing Infoblox connection information, passing.')
+                return {}
+            ctxt['enable_infoblox'] = True
+            ctxt['cloud_data_center_id'] = rdata.get('dc_id')
+            ctxt['grid_master_host'] = rdata.get('grid_master_host')
+            ctxt['grid_master_name'] = rdata.get('grid_master_name')
+            ctxt['infoblox_admin_user_name'] = rdata.get('admin_user_name')
+            ctxt['infoblox_admin_password'] = rdata.get('admin_password')
+            # the next three values are non-critical and may accept defaults
+            ctxt['wapi_version'] = rdata.get('wapi_version', '2.3')
+            ctxt['wapi_max_results'] = rdata.get('wapi_max_results', '-50000')
+            ctxt['wapi_paging'] = rdata.get('wapi_paging', True)
+        return ctxt
+
+    def check_requirements(self, rdata):
+        required = [
+            'grid_master_name',
+            'grid_master_host',
+            'admin_user_name',
+            'admin_password',
+        ]
+        return len(set(p for p, v in rdata.items() if v).
+                   intersection(required)) == len(required)

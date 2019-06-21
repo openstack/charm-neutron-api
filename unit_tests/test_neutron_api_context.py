@@ -1398,3 +1398,54 @@ class NeutronLoadBalancerContextTest(CharmTestCase):
                                 'base_url': 'http://1.2.3.4:1234'})
         with self.assertRaises(ValueError):
             context.NeutronLoadBalancerContext()()
+
+
+class NeutronInfobloxContextTest(CharmTestCase):
+
+    def setUp(self):
+        super(NeutronInfobloxContextTest, self).setUp(context, TO_PATCH)
+        self.relation_get.side_effect = self.test_relation.get
+        self.config.side_effect = self.test_config.get
+
+    def tearDown(self):
+        super(NeutronInfobloxContextTest, self).tearDown()
+
+    def test_infoblox_no_related_units(self):
+        self.related_units.return_value = []
+        ctxt = context.NeutronInfobloxContext()()
+        expect = {}
+
+        self.assertEqual(expect, ctxt)
+
+    def test_infoblox_related_units(self):
+        self.related_units.return_value = ['unit1']
+        self.relation_ids.return_value = ['rid1']
+        self.test_relation.set(
+            {'dc_id': '0',
+             'grid_master_host': 'foo',
+             'grid_master_name': 'bar',
+             'admin_user_name': 'faz',
+             'admin_password': 'baz'})
+        ctxt = context.NeutronInfobloxContext()()
+        expect = {'enable_infoblox': True,
+                  'cloud_data_center_id': '0',
+                  'grid_master_host': 'foo',
+                  'grid_master_name': 'bar',
+                  'infoblox_admin_user_name': 'faz',
+                  'infoblox_admin_password': 'baz',
+                  'wapi_version': '2.3',
+                  'wapi_max_results': '-50000',
+                  'wapi_paging': True}
+
+        self.assertEqual(expect, ctxt)
+
+    def test_infoblox_related_units_missing_data(self):
+        self.related_units.return_value = ['unit1']
+        self.relation_ids.return_value = ['rid1']
+        self.test_relation.set(
+            {'dc_id': '0',
+             'grid_master_host': 'foo'})
+        ctxt = context.NeutronInfobloxContext()()
+        expect = {}
+
+        self.assertEqual(expect, ctxt)

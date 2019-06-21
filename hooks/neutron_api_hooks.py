@@ -35,6 +35,7 @@ from charmhelpers.core.hookenv import (
     open_port,
     unit_get,
     related_units,
+    is_leader,
 )
 
 from charmhelpers.core.host import (
@@ -86,6 +87,7 @@ from neutron_api_utils import (
     pause_unit_helper,
     resume_unit_helper,
     remove_old_packages,
+    is_db_initialised,
 )
 from neutron_api_context import (
     get_dns_domain,
@@ -294,6 +296,7 @@ def config_changed():
     packages_removed = remove_old_packages()
     configure_https()
     update_nrpe_config()
+    infoblox_changed()
     CONFIGS.write_all()
     if packages_removed and not is_unit_paused_set():
         log("Package purge detected, restarting services", "INFO")
@@ -359,7 +362,7 @@ def db_changed():
         return
     CONFIGS.write_all()
     conditional_neutron_migration()
-
+    infoblox_changed()
     for r_id in relation_ids('neutron-plugin-api-subordinate'):
         neutron_plugin_api_subordinate_relation_joined(relid=r_id)
 
@@ -415,6 +418,7 @@ def identity_changed():
     for r_id in relation_ids('neutron-plugin-api-subordinate'):
         neutron_plugin_api_subordinate_relation_joined(relid=r_id)
     configure_https()
+    infoblox_changed()
 
 
 @hooks.hook('neutron-api-relation-joined')
@@ -652,6 +656,34 @@ def midonet_changed():
             'external-dns-relation-broken')
 @restart_on_change(restart_map())
 def designate_changed():
+    CONFIGS.write_all()
+
+
+@hooks.hook('infoblox-neutron-relation-changed')
+@restart_on_change(restart_map)
+def infoblox_changed():
+    # The neutron DB upgrade will add new tables to
+    # neutron db related to infoblox service.
+    # Please take a look to charm-infoblox docs.
+    if 'infoblox-neutron' not in CONFIGS.complete_contexts():
+        log('infoblox-neutron relation incomplete. Peer not ready?')
+        return
+
+    CONFIGS.write(NEUTRON_CONF)
+
+    if is_leader():
+        ready = False
+        if is_db_initialised() and neutron_ready():
+            migrate_neutron_database(upgrade=True)
+            ready = True
+        for rid in relation_ids('infoblox-neutron'):
+            relation_set(relation_id=rid, neutron_api_ready=ready)
+
+
+@hooks.hook('infoblox-neutron-relation-departed',
+            'infoblox-neutron-relation-broken')
+@restart_on_change(restart_map)
+def infoblox_departed():
     CONFIGS.write_all()
 
 
