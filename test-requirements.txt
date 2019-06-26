@@ -7,23 +7,8 @@ mock>=1.2
 flake8>=2.2.4,<=2.4.1
 stestr>=2.2.0
 requests>=2.18.4
-# BEGIN: Amulet OpenStack Charm Helper Requirements
-# Liberty client lower constraints
-amulet>=1.14.3,<2.0;python_version=='2.7'
-bundletester>=0.6.1,<1.0;python_version=='2.7'
-python-ceilometerclient>=1.5.0
-python-cinderclient>=1.4.0
-python-glanceclient>=1.1.0
-python-heatclient>=0.8.0
-python-keystoneclient>=1.7.1
-python-neutronclient>=3.1.0
-python-novaclient>=2.30.1
-python-openstackclient>=1.7.0
-python-swiftclient>=2.6.0
-pika>=0.10.0,<1.0
-distro-info
-git+https://github.com/juju/charm-helpers.git#egg=charmhelpers
-# END: Amulet OpenStack Charm Helper Requirements
+git+https://github.com/openstack-charmers/zaza.git#egg=zaza
+git+https://github.com/openstack-charmers/zaza-openstack-tests.git#egg=zaza.openstack
 # NOTE: workaround for 14.04 pip/tox
 pytz
 pyudev  # for ceph-* charm unit tests (not mocked?)
