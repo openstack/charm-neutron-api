@@ -737,6 +737,8 @@ options:
     default: 24
     description: |
       The size in bits of the prefix for the IPv4 reverse lookup (PTR) zones.
+      Valid size has to be multiple of 8, with maximum value of 24 and minimum
+      value of 8.
       .
       NOTE: Use only when "reverse-dns-lookup" option is set to "True".
   ipv6-ptr-zone-prefix-size:
@@ -744,6 +746,8 @@ options:
     default: 64
     description: |
       The size in bits of the prefix for the IPv6 reverse lookup (PTR) zones.
+      Valid size has to be multiple of 4, with maximum value of 124 and minimum
+      value of 4.
       .
       NOTE: Use only when "reverse-dns-lookup" option is set to "True".
   dhcp-load-type:
