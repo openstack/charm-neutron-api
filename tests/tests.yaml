@@ -6,9 +6,13 @@ gate_bundles:
   - xenial-ocata
   - xenial-pike
   - xenial-queens
+  - xenial-queens-dvr
+  - xenial-queens-dvr-snat
   - bionic-queens
   - bionic-rocky
   - bionic-stein
+  - bionic-stein-dvr
+  - bionic-stein-dvr-snat
 smoke_bundles:
   - bionic-queens
 dev_bundles:
