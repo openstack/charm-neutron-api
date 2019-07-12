@@ -14,7 +14,7 @@ gate_bundles:
   - bionic-stein-dvr
   - bionic-stein-dvr-snat
 smoke_bundles:
-  - bionic-queens
+  - bionic-stein
 dev_bundles:
   - cosmic-rocky
   - disco-stein

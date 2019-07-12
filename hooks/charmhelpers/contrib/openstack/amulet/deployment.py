@@ -323,6 +323,23 @@ class OpenStackAmuletDeployment(AmuletDeployment):
         else:
             return releases[self.series]
 
+    def get_percona_service_entry(self, memory_constraint=None):
+        """Return a amulet service entry for percona cluster.
+
+        :param memory_constraint: Override the default memory constraint
+                                  in the service entry.
+        :type memory_constraint: str
+        :returns: Amulet service entry.
+        :rtype: dict
+        """
+        memory_constraint = memory_constraint or '3072M'
+        svc_entry = {
+            'name': 'percona-cluster',
+            'constraints': {'mem': memory_constraint}}
+        if self._get_openstack_release() <= self.trusty_mitaka:
+            svc_entry['location'] = 'cs:trusty/percona-cluster'
+        return svc_entry
+
     def get_ceph_expected_pools(self, radosgw=False):
         """Return a list of expected ceph pools in a ceph + cinder + glance
         test scenario, based on OpenStack release and whether ceph radosgw

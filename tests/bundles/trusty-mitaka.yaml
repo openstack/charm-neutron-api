@@ -21,7 +21,7 @@ machines:
 # time, given that machine "0" comes up way before machine "7"
 applications:
   percona-cluster:
-    charm: cs:~openstack-charmers-next/percona-cluster
+    charm: cs:trusty/percona-cluster
     num_units: 1
     options:
       source: *openstack-origin
