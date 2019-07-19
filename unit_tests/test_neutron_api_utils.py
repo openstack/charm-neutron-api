@@ -180,6 +180,19 @@ class TestNeutronAPIUtils(CharmTestCase):
 
     @patch.object(nutils, 'manage_plugin')
     @patch('os.path.exists')
+    def test_resource_map_queens(self, _path_exists, _manage_plugin):
+        _path_exists.return_value = False
+        _manage_plugin.return_value = True
+        self.os_release.return_value = 'queens'
+        _map = nutils.resource_map()
+        confs = [nutils.NEUTRON_CONF, nutils.NEUTRON_DEFAULT,
+                 nutils.APACHE_CONF, nutils.NEUTRON_LBAAS_CONF,
+                 nutils.NEUTRON_VPNAAS_CONF, nutils.ADMIN_POLICY]
+        [self.assertIn(q_conf, _map.keys()) for q_conf in confs]
+        self.assertTrue(nutils.APACHE_24_CONF not in _map.keys())
+
+    @patch.object(nutils, 'manage_plugin')
+    @patch('os.path.exists')
     def test_resource_map_apache24(self, _path_exists, _manage_plugin):
         self.os_release.return_value = 'havana'
         _path_exists.return_value = True

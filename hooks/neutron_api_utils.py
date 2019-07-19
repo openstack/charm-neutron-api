@@ -146,6 +146,7 @@ NEUTRON_DEFAULT = '/etc/default/neutron-server'
 CA_CERT_PATH = '/usr/local/share/ca-certificates/keystone_juju_ca_cert.crt'
 MEMCACHED_CONF = '/etc/memcached.conf'
 API_PASTE_INI = '%s/api-paste.ini' % NEUTRON_CONF_DIR
+ADMIN_POLICY = "/etc/neutron/policy.d/00-admin.json"
 # NOTE:(fnordahl) placeholder ml2_conf_srov.ini pointing users to ml2_conf.ini
 # Due to how neutron init scripts are laid out on various Linux
 # distributions we put the [ml2_sriov] section in ml2_conf.ini instead
@@ -461,6 +462,13 @@ def resource_map(release=None):
     release = release or os_release('neutron-common')
 
     resource_map = deepcopy(BASE_RESOURCE_MAP)
+    if CompareOpenStackReleases(release) >= 'queens':
+        resource_map[ADMIN_POLICY] = {
+            'contexts': [
+                neutron_api_context.IdentityServiceContext(
+                    service='neutron',
+                    service_user='neutron')],
+            'services': ['neutron-server']}
     if CompareOpenStackReleases(release) >= 'liberty':
         resource_map.update(LIBERTY_RESOURCE_MAP)
 
