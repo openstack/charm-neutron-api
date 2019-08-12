@@ -28,7 +28,7 @@ applications:
     to:
       - '0'
   rabbitmq-server:
-    charm: cs:~openstack-charmers-next/rabbitmq-server
+    charm: cs:rabbitmq-server
     num_units: 1
     options:
       source: *openstack-origin
@@ -45,23 +45,23 @@ applications:
     to:
       - '2'
   keystone:
-    charm: cs:~openstack-charmers-next/keystone
+    charm: cs:keystone
     num_units: 1
     options:
       openstack-origin: *openstack-origin
     to:
       - '3'
   glance:
-    charm: cs:~openstack-charmers-next/glance
+    charm: cs:glance
     num_units: 1
     options:
       openstack-origin: *openstack-origin
     to:
       - '4'
   neutron-openvswitch:
-    charm: cs:~openstack-charmers-next/neutron-openvswitch
+    charm: cs:neutron-openvswitch
   neutron-gateway:
-    charm: cs:~openstack-charmers-next/neutron-gateway
+    charm: cs:neutron-gateway
     num_units: 1
     options:
       bridge-mappings: physnet1:br-ex
@@ -69,7 +69,7 @@ applications:
     to:
       - '5'
   nova-cloud-controller:
-    charm: cs:~openstack-charmers-next/nova-cloud-controller
+    charm: cs:nova-cloud-controller
     num_units: 1
     options:
       network-manager: Neutron
@@ -77,7 +77,7 @@ applications:
     to:
       - '6'
   nova-compute:
-    charm: cs:~openstack-charmers-next/nova-compute
+    charm: cs:nova-compute
     num_units: 2
     options:
       config-flags: default_ephemeral_format=ext4
