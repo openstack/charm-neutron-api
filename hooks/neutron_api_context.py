@@ -586,6 +586,9 @@ class NeutronCCContext(context.NeutronContext):
                 'stein': ['router', 'firewall_v2', 'metering', 'segments',
                           ('neutron_dynamic_routing.'
                            'services.bgp.bgp_plugin.BgpPlugin')],
+                'train': ['router', 'firewall_v2', 'metering', 'segments',
+                          ('neutron_dynamic_routing.'
+                           'services.bgp.bgp_plugin.BgpPlugin')],
             }
             if cmp_release >= 'rocky':
                 if ctxt.get('load_balancer_name', None):
