@@ -187,7 +187,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         _map = nutils.resource_map()
         confs = [nutils.NEUTRON_CONF, nutils.NEUTRON_DEFAULT,
                  nutils.APACHE_CONF, nutils.NEUTRON_LBAAS_CONF,
-                 nutils.NEUTRON_VPNAAS_CONF, nutils.ADMIN_POLICY]
+                 nutils.NEUTRON_VPNAAS_CONF]
         [self.assertIn(q_conf, _map.keys()) for q_conf in confs]
         self.assertTrue(nutils.APACHE_24_CONF not in _map.keys())
 

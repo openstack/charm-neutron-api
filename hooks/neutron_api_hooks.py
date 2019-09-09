@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import uuid
 from subprocess import (
@@ -65,6 +66,7 @@ from charmhelpers.contrib.openstack.utils import (
 
 from neutron_api_utils import (
     additional_install_locations,
+    ADMIN_POLICY,
     API_PASTE_INI,
     api_port,
     assess_status,
@@ -298,6 +300,11 @@ def config_changed():
     configure_https()
     update_nrpe_config()
     infoblox_changed()
+    # This part can be removed for U.
+    if os.path.exists(ADMIN_POLICY):
+        # Clean 00-admin.json added for bug/1830536. At has been
+        # noticed that it creates regression.
+        os.remove(ADMIN_POLICY)
     CONFIGS.write_all()
     if packages_removed and not is_unit_paused_set():
         log("Package purge detected, restarting services", "INFO")
