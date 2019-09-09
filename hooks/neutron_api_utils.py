@@ -462,13 +462,6 @@ def resource_map(release=None):
     release = release or os_release('neutron-common')
 
     resource_map = deepcopy(BASE_RESOURCE_MAP)
-    if CompareOpenStackReleases(release) >= 'queens':
-        resource_map[ADMIN_POLICY] = {
-            'contexts': [
-                neutron_api_context.IdentityServiceContext(
-                    service='neutron',
-                    service_user='neutron')],
-            'services': ['neutron-server']}
     if CompareOpenStackReleases(release) >= 'liberty':
         resource_map.update(LIBERTY_RESOURCE_MAP)
 
