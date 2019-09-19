@@ -1,2 +1,0 @@
-"is_service_project": "project_id:{{ service_project_id }} or domain_id:{{ service_domain_id }}"
-"context_is_admin": "role:admin and (is_admin_project:True or rule:is_service_project)"
