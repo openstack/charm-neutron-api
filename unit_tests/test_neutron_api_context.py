@@ -1096,30 +1096,35 @@ class NeutronApiSDNContextTest(CharmTestCase):
     @patch.object(charmhelpers.contrib.openstack.context, 'relation_get')
     @patch.object(charmhelpers.contrib.openstack.context, 'related_units')
     @patch.object(charmhelpers.contrib.openstack.context, 'relation_ids')
-    def ctxt_check(self, rel_settings, expect, _rids, _runits, _rget, _log):
+    def ctxt_check(self, rel_settings, expect, _rids, _runits, _rget, _log,
+                   defaults=None, not_defaults=None):
         self.test_relation.set(rel_settings)
         _runits.return_value = ['unit1']
         _rids.return_value = ['rid2']
         _rget.side_effect = self.test_relation.get
         self.relation_ids.return_value = ['rid2']
         self.related_units.return_value = ['unit1']
-        napisdn_ctxt = context.NeutronApiSDNContext()()
+        napisdn_instance = context.NeutronApiSDNContext()
+        napisdn_ctxt = napisdn_instance()
         self.assertEqual(napisdn_ctxt, expect)
+        defaults = defaults or []
+        for templ_key in defaults:
+            self.assertTrue(napisdn_instance.is_default(templ_key))
+        not_defaults = not_defaults or []
+        for templ_key in not_defaults:
+            self.assertFalse(napisdn_instance.is_default(templ_key))
 
     def test_defaults(self):
         self.ctxt_check(
             {'neutron-plugin': 'ovs'},
             {
-                'api_extensions_path': '',
                 'core_plugin': 'neutron.plugins.ml2.plugin.Ml2Plugin',
                 'neutron_plugin_config': ('/etc/neutron/plugins/ml2/'
                                           'ml2_conf.ini'),
-                'service_plugins': 'router,firewall,lbaas,vpnaas,metering',
-                'restart_trigger': '',
-                'quota_driver': '',
                 'neutron_plugin': 'ovs',
                 'sections': {},
-            }
+            },
+            defaults=['core_plugin', 'neutron_plugin_config'],
         )
 
     def test_overrides(self):
@@ -1132,6 +1137,10 @@ class NeutronApiSDNContextTest(CharmTestCase):
                 'service-plugins': 'router,unicorn,rainbows',
                 'restart-trigger': 'restartnow',
                 'quota-driver': 'quotadriver',
+                'extension-drivers': 'dns,port_security',
+                'mechanism-drivers': 'ovn',
+                'tenant-network-types': 'geneve,gre,vlan,flat,local',
+                'neutron-security-groups': 'true',
             },
             {
                 'api_extensions_path': '/usr/local/share/neutron/extensions',
@@ -1141,8 +1150,18 @@ class NeutronApiSDNContextTest(CharmTestCase):
                 'restart_trigger': 'restartnow',
                 'quota_driver': 'quotadriver',
                 'neutron_plugin': 'ovs',
+                'extension_drivers': 'dns,port_security',
+                'mechanism_drivers': 'ovn',
+                'tenant_network_types': 'geneve,gre,vlan,flat,local',
+                'neutron_security_groups': 'true',
                 'sections': {},
-            }
+            },
+            not_defaults=[
+                'api_extensions_path', 'core_plugin', 'neutron_plugin_config',
+                'service_plugins', 'restart_trigger', 'quota_driver',
+                'extension_drivers', 'mechanism_drivers',
+                'tenant_network_types', 'neutron_security_groups',
+            ],
         )
 
     def test_subordinateconfig(self):
@@ -1163,13 +1182,9 @@ class NeutronApiSDNContextTest(CharmTestCase):
                 'subordinate_configuration': json.dumps(principle_config),
             },
             {
-                'api_extensions_path': '',
                 'core_plugin': 'neutron.plugins.ml2.plugin.Ml2Plugin',
                 'neutron_plugin_config': ('/etc/neutron/plugins/ml2/'
                                           'ml2_conf.ini'),
-                'service_plugins': 'router,firewall,lbaas,vpnaas,metering',
-                'restart_trigger': '',
-                'quota_driver': '',
                 'neutron_plugin': 'ovs',
                 'sections': {u'DEFAULT': [[u'neutronboost', True]]},
             }

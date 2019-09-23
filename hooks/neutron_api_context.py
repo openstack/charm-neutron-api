@@ -674,15 +674,24 @@ class EtcdContext(context.OSContextGenerator):
 class NeutronApiSDNContext(context.SubordinateConfigContext):
     interfaces = 'neutron-plugin-api-subordinate'
 
-    def __init__(self):
+    def __init__(self, config_file='/etc/neutron/neutron.conf'):
+        """Initialize context for plugin subordinates.
+
+        :param config_file: Which config file we accept custom sections for
+        :type config_file: str
+        """
         super(NeutronApiSDNContext, self).__init__(
             interface='neutron-plugin-api-subordinate',
             service='neutron-api',
-            config_file='/etc/neutron/neutron.conf')
-
-    def __call__(self):
-        ctxt = super(NeutronApiSDNContext, self).__call__()
-        defaults = {
+            config_file=config_file)
+        # NOTE: The defaults dict serve a dual purpose.
+        # 1. Only the keys listed here are picked up from the relation.
+        # 2. Any keys listed here with a value will be used as a default
+        #    if not specified on the relation.
+        #
+        # Any empty values will not be returned on this context to allow
+        # values to be passed on from other contexts.
+        self.defaults = {
             'core-plugin': {
                 'templ_key': 'core_plugin',
                 'value': 'neutron.plugins.ml2.plugin.Ml2Plugin',
@@ -693,7 +702,7 @@ class NeutronApiSDNContext(context.SubordinateConfigContext):
             },
             'service-plugins': {
                 'templ_key': 'service_plugins',
-                'value': 'router,firewall,lbaas,vpnaas,metering',
+                'value': '',
             },
             'restart-trigger': {
                 'templ_key': 'restart_trigger',
@@ -707,7 +716,42 @@ class NeutronApiSDNContext(context.SubordinateConfigContext):
                 'templ_key': 'api_extensions_path',
                 'value': '',
             },
+            'extension-drivers': {
+                'templ_key': 'extension_drivers',
+                'value': '',
+            },
+            'mechanism-drivers': {
+                'templ_key': 'mechanism_drivers',
+                'value': '',
+            },
+            'tenant-network-types': {
+                'templ_key': 'tenant_network_types',
+                'value': '',
+            },
+            'neutron-security-groups': {
+                'templ_key': 'neutron_security_groups',
+                'value': '',
+            },
         }
+
+    def is_default(self, templ_key):
+        """Check whether value associated with specified key is the default.
+
+        :param templ_key: Key to look up
+        :type templ_key: str
+        :returns: True if default, False if not, None if key does not exist.
+        :rtype: Option[bool, NoneValue]
+        """
+        ctxt = self.__call__()
+        for interface_key in self.defaults:
+            if self.defaults[interface_key]['templ_key'] == templ_key:
+                break
+        else:
+            return None
+        return ctxt.get(templ_key) == self.defaults[interface_key]['value']
+
+    def __call__(self):
+        ctxt = super(NeutronApiSDNContext, self).__call__()
         for rid in relation_ids('neutron-plugin-api-subordinate'):
             for unit in related_units(rid):
                 rdata = relation_get(rid=rid, unit=unit)
@@ -715,13 +759,16 @@ class NeutronApiSDNContext(context.SubordinateConfigContext):
                 if not plugin:
                     continue
                 ctxt['neutron_plugin'] = plugin
-                for key in defaults.keys():
+                for key in self.defaults.keys():
                     remote_value = rdata.get(key)
-                    ctxt_key = defaults[key]['templ_key']
+                    ctxt_key = self.defaults[key]['templ_key']
                     if remote_value:
                         ctxt[ctxt_key] = remote_value
+                    elif self.defaults[key]['value']:
+                        ctxt[ctxt_key] = self.defaults[key]['value']
                     else:
-                        ctxt[ctxt_key] = defaults[key]['value']
+                        # Do not set empty values
+                        pass
                 return ctxt
         return ctxt
 

@@ -491,8 +491,29 @@ def resource_map(release=None):
             resource_map[ML2_SRIOV_INI]['services'] = services
             resource_map[ML2_SRIOV_INI]['contexts'] = []
     else:
+        plugin_ctxt_instance = neutron_api_context.NeutronApiSDNContext()
+        if (plugin_ctxt_instance.is_default('core_plugin') and
+                plugin_ctxt_instance.is_default('neutron_plugin_config')):
+            # The default core plugin is ML2.  If the driver provided by plugin
+            # subordinate is built on top of ML2, the subordinate will have use
+            # for influencing existing template variables as well as injecting
+            # sections into the ML2 configuration file.
+            conf = neutron_plugin_attribute('ovs', 'config', 'neutron')
+            services = neutron_plugin_attribute('ovs', 'server_services',
+                                                'neutron')
+            if conf not in resource_map:
+                resource_map[conf] = {}
+                resource_map[conf]['services'] = services
+                resource_map[conf]['contexts'] = [
+                    neutron_api_context.NeutronCCContext(),
+                ]
+            resource_map[conf]['contexts'].append(
+                neutron_api_context.NeutronApiSDNContext(
+                    config_file=conf)
+            )
+
         resource_map[NEUTRON_CONF]['contexts'].append(
-            neutron_api_context.NeutronApiSDNContext()
+            plugin_ctxt_instance,
         )
         resource_map[NEUTRON_DEFAULT]['contexts'] = \
             [neutron_api_context.NeutronApiSDNConfigFileContext()]

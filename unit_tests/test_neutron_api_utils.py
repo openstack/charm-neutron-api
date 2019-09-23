@@ -139,7 +139,8 @@ class TestNeutronAPIUtils(CharmTestCase):
         expect.extend(nutils.KILO_PACKAGES)
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
-    def test_determine_packages_noplugin(self):
+    @patch.object(nutils.neutron_api_context, 'NeutronApiSDNContext')
+    def test_determine_packages_noplugin(self, _NeutronApiSDNContext):
         self.os_release.return_value = 'havana'
         self.get_os_codename_install_source.return_value = 'havana'
         self.test_config.set('manage-neutron-plugin-legacy-mode', False)
@@ -203,9 +204,13 @@ class TestNeutronAPIUtils(CharmTestCase):
         [self.assertIn(q_conf, _map.keys()) for q_conf in confs]
         self.assertTrue(nutils.APACHE_CONF not in _map.keys())
 
+    @patch.object(nutils.neutron_api_context, 'NeutronApiSDNContext')
     @patch.object(nutils, 'manage_plugin')
     @patch('os.path.exists')
-    def test_resource_map_noplugin(self, _path_exists, _manage_plugin):
+    def test_resource_map_noplugin(self,
+                                   _path_exists,
+                                   _manage_plugin,
+                                   _NeutronApiSDNContext):
         self.os_release.return_value = 'havana'
         _path_exists.return_value = True
         _manage_plugin.return_value = False
@@ -213,7 +218,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         found_sdn_ctxt = False
         found_sdnconfig_ctxt = False
         for ctxt in _map[nutils.NEUTRON_CONF]['contexts']:
-            if isinstance(ctxt, ncontext.NeutronApiSDNContext):
+            if isinstance(ctxt, MagicMock):
                 found_sdn_ctxt = True
         for ctxt in _map[nutils.NEUTRON_DEFAULT]['contexts']:
             if isinstance(ctxt, ncontext.NeutronApiSDNConfigFileContext):
