@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import sys
 import uuid
@@ -65,44 +66,46 @@ from charmhelpers.contrib.openstack.utils import (
 )
 
 from neutron_api_utils import (
-    additional_install_locations,
     ADMIN_POLICY,
-    API_PASTE_INI,
+    CLUSTER_RES,
+    NEUTRON_CONF,
+    additional_install_locations,
     api_port,
     assess_status,
-    CLUSTER_RES,
+    check_local_db_actions_complete,
     determine_packages,
     determine_ports,
     do_openstack_upgrade,
     dvr_router_present,
     force_etcd_restart,
     is_api_ready,
+    is_db_initialised,
     l3ha_router_present,
+    manage_plugin,
     migrate_neutron_database,
-    NEUTRON_CONF,
     neutron_ready,
+    pause_unit_helper,
     register_configs,
+    remove_old_packages,
     restart_map,
+    resume_unit_helper,
     services,
     setup_ipv6,
-    check_local_db_actions_complete,
-    pause_unit_helper,
-    resume_unit_helper,
-    remove_old_packages,
-    is_db_initialised,
 )
 from neutron_api_context import (
+    EtcdContext,
+    IdentityServiceContext,
+    NeutronApiSDNContext,
+    NeutronCCContext,
     get_dns_domain,
     get_dvr,
-    get_l3ha,
     get_l2population,
+    get_l3ha,
     get_overlay_network_type,
-    IdentityServiceContext,
-    is_qos_requested_and_valid,
-    is_vlan_trunking_requested_and_valid,
     is_nfg_logging_enabled,
     is_nsg_logging_enabled,
-    EtcdContext,
+    is_qos_requested_and_valid,
+    is_vlan_trunking_requested_and_valid,
 )
 
 from charmhelpers.contrib.hahelpers.cluster import (
@@ -320,6 +323,8 @@ def config_changed():
         identity_joined(rid=r_id)
     for r_id in relation_ids('ha'):
         ha_joined(relation_id=r_id)
+    for r_id in relation_ids('neutron-plugin-api-subordinate'):
+        neutron_plugin_api_subordinate_relation_joined(relid=r_id)
     [cluster_joined(rid) for rid in relation_ids('cluster')]
 
 
@@ -608,17 +613,20 @@ def neutron_plugin_api_subordinate_relation_joined(relid=None):
     relation_data = {'neutron-api-ready': 'no'}
     if is_api_ready(CONFIGS):
         relation_data['neutron-api-ready'] = "yes"
+    if not manage_plugin():
+        neutron_cc_ctxt = NeutronCCContext()()
+        plugin_instance = NeutronApiSDNContext()
+        neutron_config_data = {
+            k: v for k, v in neutron_cc_ctxt.items()
+            if plugin_instance.is_allowed(k)}
+        if neutron_config_data:
+            relation_data['neutron_config_data'] = json.dumps(
+                neutron_config_data)
     relation_set(relation_id=relid, **relation_data)
 
     # there is no race condition with the neutron service restart
     # as juju propagates the changes done in relation_set only after
     # the hook exists
-    CONFIGS.write(API_PASTE_INI)
-
-
-@hooks.hook('neutron-plugin-api-subordinate-relation-changed')
-@restart_on_change(restart_map(), stopstart=True)
-def neutron_plugin_api_relation_changed():
     CONFIGS.write_all()
 
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import sys
 
 from mock import MagicMock, patch, call
@@ -198,6 +199,8 @@ class NeutronAPIHooksTests(CharmTestCase):
         _id_rel_joined = self.patch('identity_joined')
         _id_cluster_joined = self.patch('cluster_joined')
         _id_ha_joined = self.patch('ha_joined')
+        _n_plugin_api_sub_rel_joined = self.patch(
+            'neutron_plugin_api_subordinate_relation_joined')
         self._call_hook('config-changed')
         self.assertTrue(_n_api_rel_joined.called)
         self.assertTrue(_n_plugin_api_rel_joined.called)
@@ -208,6 +211,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         self.assertTrue(self.CONFIGS.write_all.called)
         self.assertTrue(self.do_openstack_upgrade.called)
         self.assertTrue(self.apt_install.called)
+        _n_plugin_api_sub_rel_joined.assert_called()
 
     def test_config_changed_nodvr_disprouters(self):
         self.neutron_ready.return_value = True
@@ -934,3 +938,27 @@ class NeutronAPIHooksTests(CharmTestCase):
     def test_infoblox_peer_departed(self):
         self._call_hook('infoblox-neutron-relation-departed')
         self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+
+    @patch.object(hooks, 'NeutronApiSDNContext')
+    @patch.object(hooks, 'NeutronCCContext')
+    @patch.object(hooks, 'manage_plugin')
+    def test_neutron_plugin_api_subordinate_relation(
+            self, _manage_plugin, _NeutronCCContext, _NeutronApiSDNContext):
+        _manage_plugin.return_value = True
+        self._call_hook('neutron-plugin-api-subordinate-relation-joined')
+        self.relation_set.assert_called_once_with(
+            **{'neutron-api-ready': 'no'}, relation_id=None)
+        self.CONFIGS.write_all.assert_called_once_with()
+        self.relation_set.reset_mock()
+        _manage_plugin.return_value = False
+        ncc_instance = _NeutronCCContext.return_value
+        ncc_instance.return_value = {'core_plugin': 'aPlugin'}
+        napisdn_instance = _NeutronApiSDNContext.return_value
+        napisdn_instance.is_allowed.return_value = True
+        self._call_hook('neutron-plugin-api-subordinate-relation-changed')
+        hooks.neutron_plugin_api_subordinate_relation_joined()
+        self.relation_set.assert_called_with(
+            **{'neutron-api-ready': 'no',
+               'neutron_config_data': json.dumps({'core_plugin': 'aPlugin'})},
+            relation_id=None)
+        self.CONFIGS.write_all.assert_called_with()

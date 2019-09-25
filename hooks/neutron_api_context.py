@@ -750,6 +750,19 @@ class NeutronApiSDNContext(context.SubordinateConfigContext):
             return None
         return ctxt.get(templ_key) == self.defaults[interface_key]['value']
 
+    def is_allowed(self, templ_key):
+        """Check whether specified key is allowed on the relation.
+
+        :param templ_key: Key to lookup
+        :type templ_key: str
+        :returns: True or False
+        :rtype: bool
+        """
+        for interface_key in self.defaults:
+            if self.defaults[interface_key]['templ_key'] == templ_key:
+                return True
+        return False
+
     def __call__(self):
         ctxt = super(NeutronApiSDNContext, self).__call__()
         for rid in relation_ids('neutron-plugin-api-subordinate'):

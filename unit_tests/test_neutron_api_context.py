@@ -1196,6 +1196,11 @@ class NeutronApiSDNContextTest(CharmTestCase):
             {'sections': {}},
         )
 
+    def test_is_allowed(self):
+        napisdn_instance = context.NeutronApiSDNContext()
+        self.assertTrue(napisdn_instance.is_allowed('core_plugin'))
+        self.assertFalse(napisdn_instance.is_allowed('non_existent_key'))
+
 
 class NeutronApiSDNConfigFileContextTest(CharmTestCase):
 
