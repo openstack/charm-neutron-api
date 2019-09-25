@@ -23,21 +23,24 @@ from subprocess import (
 )
 
 from charmhelpers.core.hookenv import (
+    DEBUG,
+    ERROR,
     Hooks,
     UnregisteredHookError,
     config,
+    is_leader,
+    leader_get,
+    leader_set,
     local_unit,
     log,
-    DEBUG,
-    ERROR,
+    open_port,
+    related_units,
     relation_get,
+    relation_id,
     relation_ids,
     relation_set,
     status_set,
-    open_port,
     unit_get,
-    related_units,
-    is_leader,
 )
 
 from charmhelpers.core.host import (
@@ -607,12 +610,28 @@ def ha_changed():
             'neutron-plugin-api-subordinate-relation-changed')
 @restart_on_change(restart_map(), stopstart=True)
 def neutron_plugin_api_subordinate_relation_joined(relid=None):
-    '''
-    -changed handles relation data set by a subordinate.
-    '''
-    relation_data = {'neutron-api-ready': 'no'}
+    relation_data = {}
+    if is_db_initialised():
+        db_migration_key = 'migrate-database-nonce'
+        if not relid:
+            relid = relation_id()
+        leader_key = '{}-{}'.format(db_migration_key, relid)
+        for unit in related_units(relid):
+            nonce = relation_get(db_migration_key, rid=relid, unit=unit)
+            if nonce:
+                if is_leader() and leader_get(leader_key) != nonce:
+                    migrate_neutron_database(upgrade=True)
+                    # track nonce in leader storage to avoid superfluous
+                    # migrations
+                    leader_set({leader_key: nonce})
+                # set nonce back on relation to signal completion to other end
+                # we do this regardless of leadership status so that
+                # subordinates connected to non-leader units can proceed.
+                relation_data[db_migration_key] = nonce
+
+    relation_data['neutron-api-ready'] = 'no'
     if is_api_ready(CONFIGS):
-        relation_data['neutron-api-ready'] = "yes"
+        relation_data['neutron-api-ready'] = 'yes'
     if not manage_plugin():
         neutron_cc_ctxt = NeutronCCContext()()
         plugin_instance = NeutronApiSDNContext()

@@ -950,15 +950,43 @@ class NeutronAPIHooksTests(CharmTestCase):
             **{'neutron-api-ready': 'no'}, relation_id=None)
         self.CONFIGS.write_all.assert_called_once_with()
         self.relation_set.reset_mock()
+        self.CONFIGS.reset_mock()
         _manage_plugin.return_value = False
         ncc_instance = _NeutronCCContext.return_value
         ncc_instance.return_value = {'core_plugin': 'aPlugin'}
         napisdn_instance = _NeutronApiSDNContext.return_value
         napisdn_instance.is_allowed.return_value = True
         self._call_hook('neutron-plugin-api-subordinate-relation-changed')
-        hooks.neutron_plugin_api_subordinate_relation_joined()
-        self.relation_set.assert_called_with(
+        self.relation_set.assert_called_once_with(
             **{'neutron-api-ready': 'no',
                'neutron_config_data': json.dumps({'core_plugin': 'aPlugin'})},
             relation_id=None)
-        self.CONFIGS.write_all.assert_called_with()
+        self.CONFIGS.write_all.assert_called_once_with()
+
+    @patch.object(hooks, 'manage_plugin')
+    @patch.object(hooks, 'is_api_ready')
+    @patch.object(hooks, 'leader_set')
+    @patch.object(hooks, 'migrate_neutron_database')
+    @patch.object(hooks, 'leader_get')
+    @patch.object(hooks, 'relation_id')
+    @patch.object(hooks, 'is_db_initialised')
+    def test_neutron_plugin_api_subordinate_relation_db_migration(
+            self, _is_db_initialised, _relation_id, _leader_get,
+            _migrate_neutron_database, _leader_set, _is_api_ready,
+            _manage_plugin):
+        _is_db_initialised.return_value = True
+        _relation_id.return_value = 'neutron-plugin-api-subordinate:42'
+        self.related_units.return_value = ['aUnit']
+        self.is_leader.return_value = True
+        self.relation_get.side_effect = None
+        self.relation_get.return_value = 'fake-uuid'
+        _leader_get.return_value = (
+            'migrate-database-nonce-neutron-plugin-api-subordinate:42')
+        _is_api_ready.return_value = True
+        _manage_plugin.return_value = True
+        self._call_hook('neutron-plugin-api-subordinate-relation-changed')
+        _migrate_neutron_database.assert_called_once_with(upgrade=True)
+        self.relation_set.assert_called_once_with(
+            relation_id='neutron-plugin-api-subordinate:42',
+            **{'migrate-database-nonce': 'fake-uuid',
+               'neutron-api-ready': 'yes'})
