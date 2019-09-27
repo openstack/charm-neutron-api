@@ -94,6 +94,8 @@ TO_PATCH = [
     'services',
     'service_restart',
     'is_db_initialised',
+    'maybe_do_policyd_overrides',
+    'maybe_do_policyd_overrides_on_config_changed',
 ]
 NEUTRON_CONF_DIR = "/etc/neutron"
 

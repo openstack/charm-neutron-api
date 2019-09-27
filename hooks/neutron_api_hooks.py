@@ -140,6 +140,11 @@ from charmhelpers.contrib.openstack.cert_utils import (
     process_certificates,
 )
 
+from charmhelpers.contrib.openstack.policyd import (
+    maybe_do_policyd_overrides,
+    maybe_do_policyd_overrides_on_config_changed,
+)
+
 from charmhelpers.contrib.openstack.context import ADDRESS_TYPES
 
 from charmhelpers.contrib.charmsupport import nrpe
@@ -215,11 +220,17 @@ def install():
     packages = determine_packages(openstack_origin)
     apt_install(packages, fatal=True)
 
-    [open_port(port) for port in determine_ports()]
+    for port in determine_ports():
+        open_port(port)
 
     if neutron_plugin == 'midonet':
         mkdir('/etc/neutron/plugins/midonet', owner='neutron', group='neutron',
               perms=0o755, force=False)
+    # call the policy overrides handler which will install any policy overrides
+    maybe_do_policyd_overrides(
+        os_release('neutron-server'),
+        'neutron',
+        restart_handler=lambda: service_restart('neutron-server'))
 
 
 @hooks.hook('vsd-rest-api-relation-joined')
@@ -258,10 +269,31 @@ def vsd_changed(relation_id=None, remote_unit=None):
 
 
 @hooks.hook('upgrade-charm')
+@restart_on_change(restart_map(), stopstart=True)
+@harden()
+def upgrade_charm():
+    common_upgrade_charm_and_config_changed()
+    # call the policy overrides handler which will install any policy overrides
+    maybe_do_policyd_overrides(
+        os_release('neutron-server'),
+        'neutron',
+        restart_handler=lambda: service_restart('neutron-server'))
+
+
 @hooks.hook('config-changed')
 @restart_on_change(restart_map(), stopstart=True)
 @harden()
 def config_changed():
+    common_upgrade_charm_and_config_changed()
+    # call the policy overrides handler which will install any policy overrides
+    maybe_do_policyd_overrides_on_config_changed(
+        os_release('neutron-server'),
+        'neutron',
+        restart_handler=lambda: service_restart('neutron-server'))
+
+
+def common_upgrade_charm_and_config_changed():
+    """Common code between upgrade-charm and config-changed hooks"""
     # if we are paused, delay doing any config changed hooks.
     # It is forced on the resume.
     if is_unit_paused_set():
@@ -328,7 +360,8 @@ def config_changed():
         ha_joined(relation_id=r_id)
     for r_id in relation_ids('neutron-plugin-api-subordinate'):
         neutron_plugin_api_subordinate_relation_joined(relid=r_id)
-    [cluster_joined(rid) for rid in relation_ids('cluster')]
+    for rid in relation_ids('cluster'):
+        cluster_joined(rid)
 
 
 @hooks.hook('amqp-relation-joined')
