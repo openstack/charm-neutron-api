@@ -1,14 +1,18 @@
-# The order of packages is significant, because pip processes them in the order
-# of appearance. Changing the order has an impact on the overall integration
-# process, which may cause wedges in the gate later.
+# This file is managed centrally by release-tools and should not be modified
+# within individual charm repos.  See the 'global' dir contents for available
+# choices of *requirements.txt files for OpenStack Charms:
+#     https://github.com/openstack-charmers/release-tools
+#
+# TODO: Distill the func test requirements from the lint/unit test
+#       requirements.  They are intertwined.  Also, Zaza itself should specify
+#       all of its own requirements and if it doesn't, fix it there.
+#
 charm-tools>=2.4.4
-coverage>=3.6
+requests>=2.18.4
 mock>=1.2
 flake8>=2.2.4,<=2.4.1
 stestr>=2.2.0
-requests>=2.18.4
-git+https://github.com/openstack-charmers/zaza.git#egg=zaza
+coverage>=4.5.2
+pyudev              # for ceph-* charm unit tests (need to fix the ceph-* charm unit tests/mocking)
+git+https://github.com/openstack-charmers/zaza.git#egg=zaza;python_version>='3.0'
 git+https://github.com/openstack-charmers/zaza-openstack-tests.git#egg=zaza.openstack
-# NOTE: workaround for 14.04 pip/tox
-pytz
-pyudev  # for ceph-* charm unit tests (not mocked?)
