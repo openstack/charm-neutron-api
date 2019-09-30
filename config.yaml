@@ -203,6 +203,11 @@ options:
     default: False
     description: |
       Enable SR-IOV networking support across Neutron and Nova.
+  enable-hardware-offload:
+    type: boolean
+    default: False
+    description: |
+      Enable OVS hardware offload support across Neutron and Nova.
   supported-pci-vendor-devs:
     type: string
     default:

@@ -435,6 +435,7 @@ def neutron_api_relation_joined(rid=None):
     neutron_url = '%s:%s' % (base_url, api_port('neutron-server'))
     relation_data = {
         'enable-sriov': config('enable-sriov'),
+        'enable-hardware-offload': config('enable-hardware-offload'),
         'neutron-url': neutron_url,
         'neutron-plugin': config('neutron-plugin'),
     }
