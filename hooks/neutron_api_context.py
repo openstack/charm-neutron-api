@@ -261,6 +261,27 @@ def is_nfg_logging_enabled():
     return False
 
 
+def is_port_forwarding_enabled():
+    """
+    Check if Neutron port forwarding featur should be enabled.
+
+    returns: True if enable-port-forwarding config item is True,
+        otherwise False.
+    :rtype: boolean
+    """
+    if config('enable-port-forwarding'):
+
+        if CompareOpenStackReleases(os_release('neutron-server')) < 'rocky':
+            log("The port forwarding option is"
+                "only supported on Rocky or later",
+                ERROR)
+            return False
+
+        return True
+
+    return False
+
+
 def is_vlan_trunking_requested_and_valid():
     """Check whether VLAN trunking should be enabled by checking whether
        it has been requested and, if it has, is it supported in the current
@@ -606,6 +627,9 @@ class NeutronCCContext(context.NeutronContext):
 
             if is_nsg_logging_enabled() or is_nfg_logging_enabled():
                 ctxt['service_plugins'].append('log')
+
+            if is_port_forwarding_enabled():
+                ctxt['service_plugins'].append('port_forwarding')
 
             if is_qos_requested_and_valid():
                 ctxt['service_plugins'].append('qos')

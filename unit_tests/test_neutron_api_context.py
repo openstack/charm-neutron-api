@@ -261,6 +261,17 @@ class GeneralTests(CharmTestCase):
         self.test_config.set('enable-firewall-group-logging', True)
         self.assertFalse(context.is_nfg_logging_enabled())
 
+    def test_is_port_forwarding_enabled(self):
+        self.os_release.return_value = 'rocky'
+        self.test_config.set('enable-port-forwarding', True)
+        self.assertTrue(context.is_port_forwarding_enabled())
+        self.os_release.return_value = 'rocky'
+        self.test_config.set('enable-port-forwarding', False)
+        self.assertFalse(context.is_port_forwarding_enabled())
+        self.os_release.return_value = 'queens'
+        self.test_config.set('enable-port-forwarding', True)
+        self.assertFalse(context.is_port_forwarding_enabled())
+
 
 class IdentityServiceContext(CharmTestCase):
 
