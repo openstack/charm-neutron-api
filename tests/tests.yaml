@@ -14,6 +14,8 @@ gate_bundles:
   - bionic-stein-dvr
   - bionic-stein-dvr-snat
   - bionic-train
+  - bionic-train-dvr
+  - bionic-train-dvr-snat
 smoke_bundles:
   - bionic-train
 dev_bundles:
