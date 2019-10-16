@@ -390,6 +390,8 @@ def determine_packages(source=None):
     packages = deepcopy(BASE_PACKAGES)
     if cmp_release >= 'rocky':
         packages.extend(PY3_PACKAGES)
+        if cmp_release >= 'train':
+            packages.remove('python3-neutron-lbaas')
 
     for v in resource_map().values():
         packages.extend(v['services'])

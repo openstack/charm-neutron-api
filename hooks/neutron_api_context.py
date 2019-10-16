@@ -611,7 +611,7 @@ class NeutronCCContext(context.NeutronContext):
                           ('neutron_dynamic_routing.'
                            'services.bgp.bgp_plugin.BgpPlugin')],
             }
-            if cmp_release >= 'rocky':
+            if cmp_release >= 'rocky' and cmp_release < 'train':
                 if ctxt.get('load_balancer_name', None):
                     # TODO(fnordahl): Remove when ``neutron_lbaas`` is retired
                     service_plugins[release].append('lbaasv2-proxy')
