@@ -871,3 +871,29 @@ class TestNeutronAPIUtils(CharmTestCase):
             "pymysql+mysql://testuser:testpassword@testhost/testdatabase"
             "?ssl_ca=foo&ssl_cert=bar&ssl_key=baz"
         )
+
+    @patch.object(nutils, 'config')
+    @patch.object(nutils, 'relation_ids')
+    @patch.object(nutils, 'log')
+    def test_check_optional_relations_invalid_ipv4(self,
+                                                   log,
+                                                   relation_ids,
+                                                   config):
+        relation_ids.return_value = True
+        config.side_effect = [True, True, 23]
+        self.assertEqual(
+            nutils.check_optional_relations(None),
+            ('blocked', 'Invalid configuration: ipv4-ptr-zone-prefix-size'))
+
+    @patch.object(nutils, 'config')
+    @patch.object(nutils, 'relation_ids')
+    @patch.object(nutils, 'log')
+    def test_check_optional_relations_invalid_ipv6(self,
+                                                   log,
+                                                   relation_ids,
+                                                   config):
+        relation_ids.return_value = True
+        config.side_effect = [True, True, 24, 63]
+        self.assertEqual(
+            nutils.check_optional_relations(None),
+            ('blocked', 'Invalid configuration: ipv6-ptr-zone-prefix-size'))

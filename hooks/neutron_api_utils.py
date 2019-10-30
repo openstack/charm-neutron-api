@@ -838,6 +838,33 @@ def check_optional_relations(configs):
     :param configs: an OSConfigRender() instance.
     :return 2-tuple: (string, string) = (status, message)
     """
+    if relation_ids('external-dns'):
+        if config('designate_endpoint') is not None:
+            if config('reverse-dns-lookup'):
+                ipv4_prefix_size = config('ipv4-ptr-zone-prefix-size')
+                valid_ipv4_prefix_size = (
+                    (8 <= ipv4_prefix_size <= 24) and
+                    (ipv4_prefix_size % 8) == 0)
+                if not valid_ipv4_prefix_size:
+                    log('Invalid ipv4-ptr-zone-prefix-size. Value of '
+                        'ipv4-ptr-zone-prefix-size has to be multiple'
+                        ' of 8, with maximum value of 24 and minimum value '
+                        'of 8.', level=DEBUG)
+                    return ('blocked',
+                            'Invalid configuration: '
+                            'ipv4-ptr-zone-prefix-size')
+                ipv6_prefix_size = config('ipv6-ptr-zone-prefix-size')
+                valid_ipv6_prefix_size = (
+                    (4 <= ipv6_prefix_size <= 124) and
+                    (ipv6_prefix_size % 4) == 0)
+                if not valid_ipv6_prefix_size:
+                    log('Invalid ipv6-ptr-zone-prefix-size. Value of '
+                        'ipv6-ptr-zone-prefix-size has to be multiple'
+                        ' of 4, with maximum value of 124 and minimum value '
+                        'of 4.', level=DEBUG)
+                    return ('blocked',
+                            'Invalid configuration: '
+                            'ipv6-ptr-zone-prefix-size')
     if relation_ids('ha'):
         try:
             get_hacluster_config()
