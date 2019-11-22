@@ -124,6 +124,10 @@ PURGE_PACKAGES = [
     'python-psycopg2',
 ]
 
+PURGE_EXTRA_PACKAGES_ON_TRAIN = [
+    'python3-neutron-lbaas',
+]
+
 VERSION_PACKAGE = 'neutron-common'
 
 BASE_SERVICES = [
@@ -427,7 +431,9 @@ def determine_packages(source=None):
 def determine_purge_packages():
     '''Return a list of packages to purge for the current OS release'''
     cmp_os_source = CompareOpenStackReleases(os_release('neutron-common'))
-    if cmp_os_source >= 'rocky':
+    if cmp_os_source >= 'train':
+        return PURGE_PACKAGES + PURGE_EXTRA_PACKAGES_ON_TRAIN
+    elif cmp_os_source >= 'rocky':
         return PURGE_PACKAGES
     return []
 
@@ -466,6 +472,9 @@ def resource_map(release=None):
     resource_map = deepcopy(BASE_RESOURCE_MAP)
     if CompareOpenStackReleases(release) >= 'liberty':
         resource_map.update(LIBERTY_RESOURCE_MAP)
+
+    if CompareOpenStackReleases(release) >= 'train':
+        resource_map.pop(NEUTRON_LBAAS_CONF)
 
     if os.path.exists('/etc/apache2/conf-available'):
         resource_map.pop(APACHE_CONF)
