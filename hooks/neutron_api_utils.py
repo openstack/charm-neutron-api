@@ -387,9 +387,13 @@ def manage_plugin():
     return config('manage-neutron-plugin-legacy-mode')
 
 
-def determine_packages(source=None):
+def determine_packages(source=None, openstack_release=None):
     # currently all packages match service names
-    release = get_os_codename_install_source(source)
+    if openstack_release:
+        release = openstack_release
+    else:
+        release = get_os_codename_install_source(source)
+
     cmp_release = CompareOpenStackReleases(release)
     packages = deepcopy(BASE_PACKAGES)
     if cmp_release >= 'rocky':

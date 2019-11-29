@@ -332,9 +332,8 @@ def common_upgrade_charm_and_config_changed():
         config('openstack-origin')
     )
     status_set('maintenance', 'Installing apt packages')
-    apt_install(filter_installed_packages(
-                determine_packages(config('openstack-origin'))),
-                fatal=True)
+    pkgs = determine_packages(openstack_release=os_release('neutron-server'))
+    apt_install(filter_installed_packages(pkgs), fatal=True)
     packages_removed = remove_old_packages()
     configure_https()
     update_nrpe_config()

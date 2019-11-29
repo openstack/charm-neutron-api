@@ -156,6 +156,23 @@ class TestNeutronAPIUtils(CharmTestCase):
         expect.remove('python3-neutron-lbaas')
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
+    def test_determine_packages_train_by_explicit_release(self):
+        self.os_release.return_value = 'train'
+        self.get_os_codename_install_source.return_value = 'train'
+        pkg_list = nutils.determine_packages(openstack_release='train')
+        expect = deepcopy(nutils.BASE_PACKAGES)
+        expect.extend([
+            'memcached',
+            'neutron-server',
+            'neutron-plugin-ml2',
+            'python-networking-hyperv'
+        ])
+        expect.extend(nutils.KILO_PACKAGES)
+        expect = [p for p in expect if not p.startswith('python-')]
+        expect.extend(nutils.PY3_PACKAGES)
+        expect.remove('python3-neutron-lbaas')
+        self.assertEqual(sorted(pkg_list), sorted(expect))
+
     @patch.object(nutils.neutron_api_context, 'NeutronApiSDNContext')
     def test_determine_packages_noplugin(self, _NeutronApiSDNContext):
         self.os_release.return_value = 'havana'
