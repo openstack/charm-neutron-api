@@ -176,17 +176,17 @@ The developer guide for Neutron contains a description of the startup
 process which makes it clear that api-paste.ini is parsed only once
 in neutron-api's lifetime (see the "WSGI Application" section):
 
-https://git.openstack.org/cgit/openstack/neutron/tree/doc/source/devref/api_layer.rst#n49
+https://opendev.org/openstack/neutron/src/branch/master/doc/source/contributor/internals/api_layer.rst
 
 For the api-paste.ini format in general, please consult PasteDeploy
 repository docs/index.txt, "Config Format" section:
-https://bitbucket.org/ianb/pastedeploy
+https://github.com/Pylons/pastedeploy
 
 Classes in loadwsgi.py contain config_prefixes that can be used for
 middleware types - these are the prefixes the charm code validates
 passed data against:
 
-https://bitbucket.org/ianb/pastedeploy/src/4b27133a2a7db58b213ae55b580039c11d2055c0/paste/deploy/loadwsgi.py?at=default&fileviewer=file-view-default
+https://github.com/Pylons/pastedeploy/blob/master/paste/deploy/loadwsgi.py
 
 # Policy Overrides
 
