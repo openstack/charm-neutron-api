@@ -151,7 +151,7 @@ CA_CERT_PATH = '/usr/local/share/ca-certificates/keystone_juju_ca_cert.crt'
 MEMCACHED_CONF = '/etc/memcached.conf'
 API_PASTE_INI = '%s/api-paste.ini' % NEUTRON_CONF_DIR
 ADMIN_POLICY = "/etc/neutron/policy.d/00-admin.json"
-# NOTE:(fnordahl) placeholder ml2_conf_srov.ini pointing users to ml2_conf.ini
+# NOTE:(fnordahl) placeholder ml2_conf_sriov.ini pointing users to ml2_conf.ini
 # Due to how neutron init scripts are laid out on various Linux
 # distributions we put the [ml2_sriov] section in ml2_conf.ini instead
 # of its default ml2_conf_sriov.ini location.
