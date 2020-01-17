@@ -50,9 +50,14 @@ from charmhelpers.core.hookenv import (
     hook_name,
     application_version_set,
     cached,
+    leader_set,
+    leader_get,
 )
 
-from charmhelpers.core.strutils import BasicStringComparator
+from charmhelpers.core.strutils import (
+    BasicStringComparator,
+    bool_from_string,
+)
 
 from charmhelpers.contrib.storage.linux.lvm import (
     deactivate_lvm_volume_group,
@@ -126,6 +131,7 @@ OPENSTACK_RELEASES = (
     'rocky',
     'stein',
     'train',
+    'ussuri',
 )
 
 UBUNTU_OPENSTACK_RELEASE = OrderedDict([
@@ -146,6 +152,7 @@ UBUNTU_OPENSTACK_RELEASE = OrderedDict([
     ('cosmic', 'rocky'),
     ('disco', 'stein'),
     ('eoan', 'train'),
+    ('focal', 'ussuri'),
 ])
 
 
@@ -167,6 +174,7 @@ OPENSTACK_CODENAMES = OrderedDict([
     ('2018.2', 'rocky'),
     ('2019.1', 'stein'),
     ('2019.2', 'train'),
+    ('2020.1', 'ussuri'),
 ])
 
 # The ugly duckling - must list releases oldest to newest
@@ -204,7 +212,9 @@ SWIFT_CODENAMES = OrderedDict([
     ('stein',
         ['2.20.0', '2.21.0']),
     ('train',
-        ['2.22.0']),
+        ['2.22.0', '2.23.0']),
+    ('ussuri',
+        ['2.24.0']),
 ])
 
 # >= Liberty version->codename mapping
@@ -219,6 +229,7 @@ PACKAGE_CODENAMES = {
         ('18', 'rocky'),
         ('19', 'stein'),
         ('20', 'train'),
+        ('21', 'ussuri'),
     ]),
     'neutron-common': OrderedDict([
         ('7', 'liberty'),
@@ -230,6 +241,7 @@ PACKAGE_CODENAMES = {
         ('13', 'rocky'),
         ('14', 'stein'),
         ('15', 'train'),
+        ('16', 'ussuri'),
     ]),
     'cinder-common': OrderedDict([
         ('7', 'liberty'),
@@ -241,6 +253,7 @@ PACKAGE_CODENAMES = {
         ('13', 'rocky'),
         ('14', 'stein'),
         ('15', 'train'),
+        ('16', 'ussuri'),
     ]),
     'keystone': OrderedDict([
         ('8', 'liberty'),
@@ -252,6 +265,7 @@ PACKAGE_CODENAMES = {
         ('14', 'rocky'),
         ('15', 'stein'),
         ('16', 'train'),
+        ('17', 'ussuri'),
     ]),
     'horizon-common': OrderedDict([
         ('8', 'liberty'),
@@ -263,6 +277,7 @@ PACKAGE_CODENAMES = {
         ('14', 'rocky'),
         ('15', 'stein'),
         ('16', 'train'),
+        ('17', 'ussuri'),
     ]),
     'ceilometer-common': OrderedDict([
         ('5', 'liberty'),
@@ -274,6 +289,7 @@ PACKAGE_CODENAMES = {
         ('11', 'rocky'),
         ('12', 'stein'),
         ('13', 'train'),
+        ('14', 'ussuri'),
     ]),
     'heat-common': OrderedDict([
         ('5', 'liberty'),
@@ -285,6 +301,7 @@ PACKAGE_CODENAMES = {
         ('11', 'rocky'),
         ('12', 'stein'),
         ('13', 'train'),
+        ('14', 'ussuri'),
     ]),
     'glance-common': OrderedDict([
         ('11', 'liberty'),
@@ -296,6 +313,7 @@ PACKAGE_CODENAMES = {
         ('17', 'rocky'),
         ('18', 'stein'),
         ('19', 'train'),
+        ('20', 'ussuri'),
     ]),
     'openstack-dashboard': OrderedDict([
         ('8', 'liberty'),
@@ -307,6 +325,7 @@ PACKAGE_CODENAMES = {
         ('14', 'rocky'),
         ('15', 'stein'),
         ('16', 'train'),
+        ('17', 'ussuri'),
     ]),
 }
 
@@ -531,7 +550,7 @@ def reset_os_release():
     _os_rel = None
 
 
-def os_release(package, base='essex', reset_cache=False):
+def os_release(package, base=None, reset_cache=False):
     '''
     Returns OpenStack release codename from a cached global.
 
@@ -542,6 +561,8 @@ def os_release(package, base='essex', reset_cache=False):
     the installation source, the earliest release supported by the charm should
     be returned.
     '''
+    if not base:
+        base = UBUNTU_OPENSTACK_RELEASE[lsb_release()['DISTRIB_CODENAME']]
     global _os_rel
     if reset_cache:
         reset_os_release()
@@ -670,7 +691,10 @@ def openstack_upgrade_available(package):
         codename = get_os_codename_install_source(src)
         avail_vers = get_os_version_codename_swift(codename)
     else:
-        avail_vers = get_os_version_install_source(src)
+        try:
+            avail_vers = get_os_version_install_source(src)
+        except Exception:
+            avail_vers = cur_vers
     apt.init()
     return apt.version_compare(avail_vers, cur_vers) >= 1
 
@@ -1693,7 +1717,7 @@ def enable_memcache(source=None, release=None, package=None):
     if release:
         _release = release
     else:
-        _release = os_release(package, base='icehouse')
+        _release = os_release(package)
     if not _release:
         _release = get_os_codename_install_source(source)
 
@@ -1863,3 +1887,28 @@ def series_upgrade_complete(resume_unit_helper=None, configs=None):
         configs.write_all()
         if resume_unit_helper:
             resume_unit_helper(configs)
+
+
+def is_db_initialised():
+    """Check leader storage to see if database has been initialised.
+
+    :returns: Whether DB has been initialised
+    :rtype: bool
+    """
+    db_initialised = None
+    if leader_get('db-initialised') is None:
+        juju_log(
+            'db-initialised key missing, assuming db is not initialised',
+            'DEBUG')
+        db_initialised = False
+    else:
+        db_initialised = bool_from_string(leader_get('db-initialised'))
+    juju_log('Database initialised: {}'.format(db_initialised), 'DEBUG')
+    return db_initialised
+
+
+def set_db_initialised():
+    """Add flag to leader storage to indicate database has been initialised.
+    """
+    juju_log('Setting db-initialised to True', 'DEBUG')
+    leader_set({'db-initialised': True})
