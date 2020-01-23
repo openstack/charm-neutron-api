@@ -818,6 +818,7 @@ class TestNeutronAPIUtils(CharmTestCase):
                 nutils.VERSION_PACKAGE
             )
 
+    @patch.object(nutils, 'get_managed_services_and_ports')
     @patch.object(nutils, 'get_optional_interfaces')
     @patch.object(nutils, 'REQUIRED_INTERFACES')
     @patch.object(nutils, 'services')
@@ -828,8 +829,10 @@ class TestNeutronAPIUtils(CharmTestCase):
                                 determine_ports,
                                 services,
                                 REQUIRED_INTERFACES,
-                                get_optional_interfaces):
-        services.return_value = 's1'
+                                get_optional_interfaces,
+                                get_managed_services_and_ports):
+        get_managed_services_and_ports.return_value = (['s1'], [])
+        services.return_value = ['s1']
         REQUIRED_INTERFACES.copy.return_value = {'int': ['test 1']}
         get_optional_interfaces.return_value = {'opt': ['test 2']}
         determine_ports.return_value = 'p1'
@@ -839,7 +842,7 @@ class TestNeutronAPIUtils(CharmTestCase):
             'test-config',
             {'int': ['test 1'], 'opt': ['test 2']},
             charm_func=nutils.check_optional_relations,
-            services='s1', ports=None)
+            services=['s1'], ports=None)
 
     def test_pause_unit_helper(self):
         with patch.object(nutils, '_pause_resume_helper') as prh:
@@ -849,9 +852,12 @@ class TestNeutronAPIUtils(CharmTestCase):
             nutils.resume_unit_helper('random-config')
             prh.assert_called_once_with(nutils.resume_unit, 'random-config')
 
+    @patch.object(nutils, 'get_managed_services_and_ports')
     @patch.object(nutils, 'services')
     @patch.object(nutils, 'determine_ports')
-    def test_pause_resume_helper(self, determine_ports, services):
+    def test_pause_resume_helper(self, determine_ports, services,
+                                 get_managed_services_and_ports):
+        get_managed_services_and_ports.return_value = (['s1'], [])
         f = MagicMock()
         services.return_value = 's1'
         determine_ports.return_value = 'p1'
@@ -860,7 +866,7 @@ class TestNeutronAPIUtils(CharmTestCase):
             nutils._pause_resume_helper(f, 'some-config')
             asf.assert_called_once_with('some-config')
             # ports=None whilst port checks are disabled.
-            f.assert_called_once_with('assessor', services='s1', ports=None)
+            f.assert_called_once_with('assessor', services=['s1'], ports=None)
 
     @patch.object(nutils, 'subprocess')
     @patch.object(nutils, 'get_db_url')

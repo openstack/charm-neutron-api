@@ -75,6 +75,7 @@ from charmhelpers.core.host import (
 
 from charmhelpers.contrib.hahelpers.cluster import (
     get_hacluster_config,
+    get_managed_services_and_ports,
 )
 
 from charmhelpers.contrib.hahelpers.cluster import is_elected_leader
@@ -929,10 +930,11 @@ def assess_status_func(configs):
     """
     required_interfaces = REQUIRED_INTERFACES.copy()
     required_interfaces.update(get_optional_interfaces())
+    _services, _ = get_managed_services_and_ports(services(), [])
     return make_assess_status_func(
         configs, required_interfaces,
         charm_func=check_optional_relations,
-        services=services(), ports=None)
+        services=_services, ports=None)
 
 
 def pause_unit_helper(configs):
@@ -964,6 +966,7 @@ def _pause_resume_helper(f, configs):
     """
     # TODO(ajkavanagh) - ports= has been left off because of the race hazard
     # that exists due to service_start()
+    _services, _ = get_managed_services_and_ports(services(), [])
     f(assess_status_func(configs),
-      services=services(),
+      services=_services,
       ports=None)
