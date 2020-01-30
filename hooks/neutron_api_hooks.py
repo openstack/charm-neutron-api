@@ -66,6 +66,7 @@ from charmhelpers.contrib.openstack.utils import (
     CompareOpenStackReleases,
     series_upgrade_prepare,
     series_upgrade_complete,
+    is_db_maintenance_mode,
 )
 
 from neutron_api_utils import (
@@ -406,6 +407,9 @@ def db_joined():
 @hooks.hook('shared-db-relation-changed')
 @restart_on_change(restart_map())
 def db_changed():
+    if is_db_maintenance_mode():
+        log('Database maintenance mode, aborting hook.', level=DEBUG)
+        return
     if 'shared-db' not in CONFIGS.complete_contexts():
         log('shared-db relation incomplete. Peer not ready?')
         return

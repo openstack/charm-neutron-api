@@ -97,6 +97,7 @@ TO_PATCH = [
     'is_db_initialised',
     'maybe_do_policyd_overrides',
     'maybe_do_policyd_overrides_on_config_changed',
+    'is_db_maintenance_mode',
 ]
 NEUTRON_CONF_DIR = "/etc/neutron"
 
@@ -293,6 +294,7 @@ class NeutronAPIHooksTests(CharmTestCase):
     @patch.object(hooks, 'neutron_plugin_api_subordinate_relation_joined')
     @patch.object(hooks, 'conditional_neutron_migration')
     def test_shared_db_changed(self, cond_neutron_mig, plugin_joined):
+        self.is_db_maintenance_mode.return_value = False
         self.CONFIGS.complete_contexts.return_value = ['shared-db']
         self.relation_ids.return_value = ['neutron-plugin-api-subordinate:1']
         self._call_hook('shared-db-relation-changed')
@@ -303,6 +305,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             relid='neutron-plugin-api-subordinate:1')
 
     def test_shared_db_changed_partial_ctxt(self):
+        self.is_db_maintenance_mode.return_value = False
         self.CONFIGS.complete_contexts.return_value = []
         self._call_hook('shared-db-relation-changed')
         self.assertFalse(self.CONFIGS.write_all.called)
