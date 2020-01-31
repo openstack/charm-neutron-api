@@ -271,6 +271,7 @@ class TestNeutronAPIUtils(CharmTestCase):
             (nutils.API_PASTE_INI, ['neutron-server']),
             (nutils.APACHE_CONF, ['apache2']),
             (nutils.HAPROXY_CONF, ['haproxy']),
+            (nutils.APACHE_PORTS_CONF, ['apache2']),
             (ML2CONF, ['neutron-server']),
         ])
         self.assertEqual(_restart_map, expect)
@@ -289,6 +290,7 @@ class TestNeutronAPIUtils(CharmTestCase):
             (nutils.API_PASTE_INI, ['neutron-server']),
             (nutils.APACHE_CONF, ['apache2']),
             (nutils.HAPROXY_CONF, ['haproxy']),
+            (nutils.APACHE_PORTS_CONF, ['apache2']),
             (ML2CONF, ['neutron-server']),
             ('{}/*'.format(nutils.APACHE_SSL_DIR),
              ['apache2', 'neutron-server']),
@@ -315,6 +317,7 @@ class TestNeutronAPIUtils(CharmTestCase):
                  '/etc/neutron/api-paste.ini',
                  '/etc/default/neutron-server',
                  '/etc/neutron/plugins/ml2/ml2_conf.ini',
+                 '/etc/apache2/ports.conf',
                  '/etc/apache2/sites-available/openstack_https_frontend',
                  '/etc/haproxy/haproxy.cfg']
         self.assertEqual(sorted(_regconfs.configs), sorted(confs))
