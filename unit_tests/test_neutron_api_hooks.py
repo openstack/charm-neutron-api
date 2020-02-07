@@ -152,7 +152,8 @@ class NeutronAPIHooksTests(CharmTestCase):
         hooks.hooks.execute([
             'hooks/{}'.format(hookname)])
 
-    def test_install_hook(self):
+    @patch.object(hooks, 'maybe_set_os_install_release')
+    def test_install_hook(self, mock_maybe_set_os_install_release):
         _pkgs = ['foo', 'bar']
         _ports = [80, 81, 82]
         _port_calls = [call(port) for port in _ports]
@@ -162,6 +163,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         self.configure_installation_source.assert_called_with(
             'distro'
         )
+        mock_maybe_set_os_install_release.assert_called_once_with('distro')
         self.apt_update.assert_called_with(fatal=True)
         self.apt_install.assert_has_calls([
             call(_pkgs, fatal=True),
@@ -384,8 +386,9 @@ class NeutronAPIHooksTests(CharmTestCase):
         self._call_hook('identity-service-relation-changed')
         self.assertFalse(_api_rel_joined.called)
 
+    @patch.object(hooks, 'manage_plugin')
     @patch.object(hooks, 'configure_https')
-    def test_identity_changed(self, conf_https):
+    def test_identity_changed(self, conf_https, mock_manage_plugin):
         self.CONFIGS.complete_contexts.return_value = ['identity-service']
         _api_rel_joined = self.patch('neutron_api_relation_joined')
         self.relation_ids.side_effect = self._fake_relids

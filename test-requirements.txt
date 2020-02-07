@@ -7,7 +7,10 @@
 #       requirements.  They are intertwined.  Also, Zaza itself should specify
 #       all of its own requirements and if it doesn't, fix it there.
 #
-charm-tools>=2.4.4
+# NOTE(fnordahl): Revert to using charm-tools from PyPI as soon as we get a
+# release with commit 2bba009 in it.
+# charm-tools>=2.4.4
+git+https://github.com/juju/charm-tools.git#egg=charm-tools
 requests>=2.18.4
 mock>=1.2
 flake8>=2.2.4,<=2.4.1

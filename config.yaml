@@ -321,10 +321,17 @@ options:
       reconfigured.
   manage-neutron-plugin-legacy-mode:
     type: boolean
-    default: True
+    default:
     description: |
-      If True neutron-server will install neutron packages for the plugin
-      configured.
+      If False plugin is chosen through the deployment of a subordinate charm
+      and relating it to the neutron-api application.
+
+      If True the network management plugin is chosen via the
+      ``neutron-plugin`` configuration option.
+
+      The default value for this configuration option for new deployments is
+      False for OpenStack Ussuri (or newer), and True when deploying or
+      upgrading from prior versions.
   enable-dvr:
     type: boolean
     default: False

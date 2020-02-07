@@ -73,6 +73,8 @@ from charmhelpers.core.host import (
     service_restart,
 )
 
+from charmhelpers.core.unitdata import kv
+
 from charmhelpers.contrib.hahelpers.cluster import (
     get_hacluster_config,
     get_managed_services_and_ports,
@@ -232,6 +234,7 @@ LIBERTY_RESOURCE_MAP = OrderedDict([
 
 NEUTRON_DB_INIT_RKEY = 'neutron-db-initialised'
 NEUTRON_DB_INIT_ECHO_RKEY = 'neutron-db-initialised-echo'
+NEUTRON_OS_INSTALL_RELEASE_KEY = 'neutron-os-install-release'
 
 
 def is_db_initialised(cluster_rid=None):
@@ -389,8 +392,57 @@ def force_etcd_restart():
         service_start('etcd')
 
 
+def maybe_set_os_install_release(source, min_release=None):
+    """Conditionally store install-time OpenStack release in key/value store.
+
+    :param source: Install source as defined by the ``openstack-origin``
+                   configuration option.
+    :type source: str
+    :param min_release: Minimal OpenStack release required to set the key,
+                        defaults to 'ussuri' if not set.
+    :type min_release: Optional[str]
+    """
+    min_release = min_release or 'ussuri'
+    release = get_os_codename_install_source(source)
+
+    cmp_release = CompareOpenStackReleases(release)
+    if cmp_release >= min_release:
+        db = kv()
+        db.set(NEUTRON_OS_INSTALL_RELEASE_KEY, release)
+        db.flush()
+
+
+def get_os_install_release():
+    """Get value stored for install-time OpenStack release from key/value store
+
+    :returns: Install-time OpenStack release or empty string if not set.
+    :rtype: str
+    """
+    db = kv()
+    return db.get(NEUTRON_OS_INSTALL_RELEASE_KEY, '')
+
+
 def manage_plugin():
-    return config('manage-neutron-plugin-legacy-mode')
+    """Determine whether the charm does legacy plugin management.
+
+    :returns: True or False
+    :rtype: bool
+    """
+    install_release = get_os_install_release()
+    if install_release:
+        cmp_install_release = CompareOpenStackReleases(install_release)
+
+    if install_release and cmp_install_release >= 'ussuri':
+        # The unit was installed as ussuri and newer, use default introduced
+        # in the 20.05 OpenStack Charms release. Note that we do not check the
+        # current configured version as downgrades is not supported.
+        default_manage_plugin = False
+    else:
+        default_manage_plugin = True
+
+    config_manage_plugin = config('manage-neutron-plugin-legacy-mode')
+    return (config_manage_plugin if config_manage_plugin is not None
+            else default_manage_plugin)
 
 
 def determine_packages(source=None, openstack_release=None):

@@ -109,7 +109,8 @@ class TestNeutronAPIUtils(CharmTestCase):
         port = nutils.api_port('neutron-server')
         self.assertEqual(port, nutils.API_PORTS['neutron-server'])
 
-    def test_determine_packages(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_packages(self, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         self.get_os_codename_install_source.return_value = 'havana'
         pkg_list = nutils.determine_packages()
@@ -117,7 +118,8 @@ class TestNeutronAPIUtils(CharmTestCase):
         expect.extend(['neutron-server', 'neutron-plugin-ml2'])
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
-    def test_determine_vsp_packages(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_vsp_packages(self, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         self.test_config.set('nuage-packages',
                              'python-nuagenetlib nuage-neutron')
@@ -129,7 +131,8 @@ class TestNeutronAPIUtils(CharmTestCase):
                        'python-nuagenetlib', 'nuage-neutron'])
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
-    def test_determine_packages_kilo(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_packages_kilo(self, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         self.get_os_codename_install_source.return_value = 'kilo'
         pkg_list = nutils.determine_packages()
@@ -139,7 +142,8 @@ class TestNeutronAPIUtils(CharmTestCase):
         expect.extend(nutils.KILO_PACKAGES)
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
-    def test_determine_packages_train(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_packages_train(self, mock_manage_plugin):
         self.os_release.return_value = 'train'
         self.get_os_codename_install_source.return_value = 'train'
         pkg_list = nutils.determine_packages()
@@ -156,7 +160,9 @@ class TestNeutronAPIUtils(CharmTestCase):
         expect.remove('python3-neutron-lbaas')
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
-    def test_determine_packages_train_by_explicit_release(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_packages_train_by_explicit_release(
+            self, mock_manage_plugin):
         self.os_release.return_value = 'train'
         self.get_os_codename_install_source.return_value = 'train'
         pkg_list = nutils.determine_packages(openstack_release='train')
@@ -173,17 +179,20 @@ class TestNeutronAPIUtils(CharmTestCase):
         expect.remove('python3-neutron-lbaas')
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(nutils.neutron_api_context, 'NeutronApiSDNContext')
-    def test_determine_packages_noplugin(self, _NeutronApiSDNContext):
+    def test_determine_packages_noplugin(self, _NeutronApiSDNContext,
+                                         mock_manage_plugin):
         self.os_release.return_value = 'havana'
         self.get_os_codename_install_source.return_value = 'havana'
-        self.test_config.set('manage-neutron-plugin-legacy-mode', False)
+        mock_manage_plugin.return_value = False
         pkg_list = nutils.determine_packages()
         expect = deepcopy(nutils.BASE_PACKAGES)
         expect.extend(['neutron-server'])
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
-    def test_determine_ports(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_ports(self, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         port_list = nutils.determine_ports()
         self.assertEqual(port_list, [9696])
@@ -259,8 +268,9 @@ class TestNeutronAPIUtils(CharmTestCase):
                 found_sdnconfig_ctxt = True
         self.assertTrue(found_sdn_ctxt and found_sdnconfig_ctxt)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch('os.path.exists')
-    def test_restart_map(self, mock_path_exists):
+    def test_restart_map(self, mock_path_exists, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         mock_path_exists.return_value = False
         _restart_map = nutils.restart_map()
@@ -276,9 +286,11 @@ class TestNeutronAPIUtils(CharmTestCase):
         ])
         self.assertEqual(_restart_map, expect)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(nutils.os.path, 'isdir')
     @patch.object(nutils.os.path, 'exists')
-    def test_restart_map_ssl(self, mock_path_exists, mock_path_isdir):
+    def test_restart_map_ssl(self, mock_path_exists, mock_path_isdir,
+                             mock_manage_plugin):
         self.os_release.return_value = 'havana'
         mock_path_exists.return_value = False
         mock_path_isdir.return_value = True
@@ -297,8 +309,9 @@ class TestNeutronAPIUtils(CharmTestCase):
         ])
         self.assertEqual(_restart_map, expect)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch('os.path.exists')
-    def test_register_configs(self, mock_path_exists):
+    def test_register_configs(self, mock_path_exists, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         mock_path_exists.return_value = False
 
@@ -335,13 +348,14 @@ class TestNeutronAPIUtils(CharmTestCase):
             nutils.keystone_ca_cert_b64()
             self.assertTrue(self.b64encode.called)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
     @patch.object(nutils, 'migrate_neutron_database')
     @patch.object(nutils, 'stamp_neutron_database')
     def test_do_openstack_upgrade(self,
                                   stamp_neutron_db, migrate_neutron_db,
-                                  gsrc):
+                                  gsrc, mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'icehouse'
         self.config.side_effect = self.test_config.get
@@ -373,13 +387,14 @@ class TestNeutronAPIUtils(CharmTestCase):
         calls = [call(upgrade=True)]
         migrate_neutron_db.assert_has_calls(calls)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
     @patch.object(nutils, 'migrate_neutron_database')
     @patch.object(nutils, 'stamp_neutron_database')
     def test_do_openstack_upgrade_liberty(self,
                                           stamp_neutron_db, migrate_neutron_db,
-                                          gsrc):
+                                          gsrc, mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'liberty'
         self.config.side_effect = self.test_config.get
@@ -390,6 +405,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         nutils.do_openstack_upgrade(configs)
         self.assertFalse(stamp_neutron_db.called)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
@@ -399,7 +415,8 @@ class TestNeutronAPIUtils(CharmTestCase):
                                         stamp_neutron_db,
                                         migrate_neutron_db,
                                         gsrc,
-                                        fwaas_migrate_v1_to_v2):
+                                        fwaas_migrate_v1_to_v2,
+                                        mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'rocky'
         self.config.side_effect = self.test_config.get
@@ -416,6 +433,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         fwaas_migrate_v1_to_v2.assert_not_called()
         configs.write_all.assert_called_once_with()
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
@@ -425,7 +443,8 @@ class TestNeutronAPIUtils(CharmTestCase):
                                         stamp_neutron_db,
                                         migrate_neutron_db,
                                         gsrc,
-                                        fwaas_migrate_v1_to_v2):
+                                        fwaas_migrate_v1_to_v2,
+                                        mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'stein'
         self.config.side_effect = self.test_config.get
@@ -442,6 +461,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         fwaas_migrate_v1_to_v2.assert_called_once_with()
         configs.write_all.assert_called_once_with()
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
@@ -451,7 +471,8 @@ class TestNeutronAPIUtils(CharmTestCase):
                                         stamp_neutron_db,
                                         migrate_neutron_db,
                                         gsrc,
-                                        fwaas_migrate_v1_to_v2):
+                                        fwaas_migrate_v1_to_v2,
+                                        mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'train'
         self.config.side_effect = self.test_config.get
@@ -469,6 +490,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         fwaas_migrate_v1_to_v2.assert_called_once_with()
         configs.write_all.assert_called_once_with()
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
     @patch.object(nutils, 'migrate_neutron_database')
@@ -476,7 +498,8 @@ class TestNeutronAPIUtils(CharmTestCase):
     def test_do_openstack_upgrade_notleader(self,
                                             stamp_neutron_db,
                                             migrate_neutron_db,
-                                            gsrc):
+                                            gsrc,
+                                            mock_manage_plugin):
         self.is_elected_leader.return_value = False
         self.os_release.return_value = 'icehouse'
         self.config.side_effect = self.test_config.get
@@ -754,15 +777,46 @@ class TestNeutronAPIUtils(CharmTestCase):
                'head']
         self.subprocess.check_output.assert_called_with(cmd)
 
-    def test_manage_plugin_true(self):
-        self.test_config.set('manage-neutron-plugin-legacy-mode', True)
-        manage = nutils.manage_plugin()
-        self.assertTrue(manage)
+    @patch.object(nutils, 'kv')
+    @patch.object(nutils, 'get_os_codename_install_source')
+    def test_maybe_set_os_install_release(
+            self, mock_get_os_codename_install_source, mock_kv):
+        mock_get_os_codename_install_source.return_value = 'ussuri'
+        db = MagicMock()
+        mock_kv.return_value = db
+        nutils.maybe_set_os_install_release('fake:source')
+        db.set.assert_called_once_with(
+            nutils.NEUTRON_OS_INSTALL_RELEASE_KEY, 'ussuri')
+        db.flush.assert_called_once_with()
+        db.reset_mock()
+        mock_get_os_codename_install_source.return_value = 'train'
+        nutils.maybe_set_os_install_release('fake:source')
+        self.assertFalse(db.set.called)
+        nutils.maybe_set_os_install_release('fake:source', min_release='train')
+        db.set.assert_called_once_with(
+            nutils.NEUTRON_OS_INSTALL_RELEASE_KEY, 'train')
+        db.flush.assert_called_once_with()
 
-    def test_manage_plugin_false(self):
+    @patch.object(nutils, 'kv')
+    def test_get_os_install_release(self, mock_kv):
+        db = MagicMock()
+        mock_kv.return_value = db
+        nutils.get_os_install_release()
+        db.get.assert_called_once_with(
+            nutils.NEUTRON_OS_INSTALL_RELEASE_KEY, '')
+
+    @patch.object(nutils, 'get_os_install_release')
+    def test_manage_plugin(self, mock_get_os_install_release):
+        mock_get_os_install_release.return_value = ''
+        self.assertTrue(nutils.manage_plugin())
+        mock_get_os_install_release.return_value = 'ussuri'
+        self.assertFalse(nutils.manage_plugin())
+        self.test_config.set('manage-neutron-plugin-legacy-mode', True)
+        self.assertTrue(nutils.manage_plugin())
         self.test_config.set('manage-neutron-plugin-legacy-mode', False)
-        manage = nutils.manage_plugin()
-        self.assertFalse(manage)
+        self.assertFalse(nutils.manage_plugin())
+        mock_get_os_install_release.return_value = ''
+        self.assertFalse(nutils.manage_plugin())
 
     def test_additional_install_locations_calico(self):
         self.get_os_codename_install_source.return_value = 'icehouse'

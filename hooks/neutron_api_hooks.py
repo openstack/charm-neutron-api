@@ -86,6 +86,7 @@ from neutron_api_utils import (
     is_db_initialised,
     l3ha_router_present,
     manage_plugin,
+    maybe_set_os_install_release,
     migrate_neutron_database,
     neutron_ready,
     pause_unit_helper,
@@ -213,6 +214,11 @@ def install():
     execd_preinstall()
     openstack_origin = config('openstack-origin')
     configure_installation_source(openstack_origin)
+
+    # Manage change of default configuration option values gated on
+    # install-time OpenStack release
+    maybe_set_os_install_release(openstack_origin)
+
     neutron_plugin = config('neutron-plugin')
     additional_install_locations(neutron_plugin, openstack_origin)
 
