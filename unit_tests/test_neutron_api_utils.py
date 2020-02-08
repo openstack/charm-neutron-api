@@ -979,6 +979,25 @@ class TestNeutronAPIUtils(CharmTestCase):
             "?ssl_ca=foo&ssl_cert=bar&ssl_key=baz"
         )
 
+    @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils, 'relation_ids')
+    def test_get_optional_interfaces(self, mock_relation_ids,
+                                     mock_manage_plugin):
+        mock_relation_ids.return_value = False
+        mock_manage_plugin.return_value = True
+        self.assertDictEqual(nutils.get_optional_interfaces(), {})
+        mock_relation_ids.assert_called_once_with('ha')
+        mock_manage_plugin.assert_called_once_with()
+        mock_relation_ids.return_value = True
+        mock_manage_plugin.return_value = False
+        self.assertDictEqual(nutils.get_optional_interfaces(), {
+            'ha': ['cluster'],
+            'neutron-plugin': [
+                'neutron-plugin-api',
+                'neutron-plugin-api-subordinate',
+            ],
+        })
+
     @patch.object(nutils, 'config')
     @patch.object(nutils, 'relation_ids')
     @patch.object(nutils, 'log')

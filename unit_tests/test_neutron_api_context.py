@@ -1204,7 +1204,7 @@ class NeutronApiSDNContextTest(CharmTestCase):
     def test_empty(self):
         self.ctxt_check(
             {},
-            {'sections': {}},
+            {},
         )
 
     def test_is_allowed(self):
@@ -1235,11 +1235,17 @@ class NeutronApiSDNConfigFileContextTest(CharmTestCase):
         })
 
     def test_default(self):
-        self.relation_ids.return_value = []
+        self.relation_ids.return_value = ['rid3']
+        self.related_units.return_value = ['unit2']
         napisdn_ctxt = context.NeutronApiSDNConfigFileContext()()
         self.assertEqual(napisdn_ctxt, {
             'config': '/etc/neutron/plugins/ml2/ml2_conf.ini'
         })
+
+    def test_no_related_unites(self):
+        self.relation_ids.return_value = ['rid4']
+        napisdn_ctxt = context.NeutronApiSDNConfigFileContext()()
+        self.assertEqual(napisdn_ctxt, {})
 
 
 class NeutronApiApiPasteContextTest(CharmTestCase):

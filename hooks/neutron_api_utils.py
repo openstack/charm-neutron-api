@@ -896,6 +896,11 @@ def get_optional_interfaces():
     optional_interfaces = {}
     if relation_ids('ha'):
         optional_interfaces['ha'] = ['cluster']
+    if not manage_plugin():
+        optional_interfaces['neutron-plugin'] = [
+            'neutron-plugin-api',
+            'neutron-plugin-api-subordinate',
+        ]
     return optional_interfaces
 
 

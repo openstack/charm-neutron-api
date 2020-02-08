@@ -696,7 +696,7 @@ class EtcdContext(context.OSContextGenerator):
 
 
 class NeutronApiSDNContext(context.SubordinateConfigContext):
-    interfaces = 'neutron-plugin-api-subordinate'
+    interfaces = ['neutron-plugin-api-subordinate']
 
     def __init__(self, config_file='/etc/neutron/neutron.conf'):
         """Initialize context for plugin subordinates.
@@ -807,7 +807,10 @@ class NeutronApiSDNContext(context.SubordinateConfigContext):
                         # Do not set empty values
                         pass
                 return ctxt
-        return ctxt
+        # Return empty dict when there are no related units, this will flag the
+        # context as incomplete and will allow end user messaging of missing
+        # relations
+        return {}
 
 
 class NeutronApiSDNConfigFileContext(context.OSContextGenerator):
@@ -820,7 +823,12 @@ class NeutronApiSDNConfigFileContext(context.OSContextGenerator):
                 neutron_server_plugin_conf = rdata.get('neutron-plugin-config')
                 if neutron_server_plugin_conf:
                     return {'config': neutron_server_plugin_conf}
-        return {'config': '/etc/neutron/plugins/ml2/ml2_conf.ini'}
+                else:
+                    return {'config': '/etc/neutron/plugins/ml2/ml2_conf.ini'}
+        # Return empty dict when there are no related units, this will flag the
+        # context as incomplete and will allow end user messaging of missing
+        # relations
+        return {}
 
 
 class NeutronApiApiPasteContext(context.OSContextGenerator):
