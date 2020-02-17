@@ -1,7 +1,9 @@
 charm_name: neutron-api
 
 gate_bundles:
-  - bionic-train-ovn: bionic-train-ovn
+  - vault: bionic-ussuri
+  - vault: eoan-train-ovn
+  - vault: bionic-train-ovn
   - bionic-train-dvr-snat
   - bionic-train-dvr
   - bionic-train
@@ -18,14 +20,18 @@ gate_bundles:
   - xenial-mitaka
   - trusty-mitaka
 smoke_bundles:
-  - bionic-train
+  - vault: bionic-ussuri
 dev_bundles:
+  - vault: focal-ussuri
+  - bionic-ussuri-ovs-dvr-snat
+  - bionic-ussuri-ovs-dvr
+  - bionic-ussuri-ovs
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
   - zaza.openstack.charm_tests.neutron.tests.SecurityTest
   - zaza.openstack.charm_tests.neutron.tests.NeutronNetworkingTest
   - zaza.openstack.charm_tests.policyd.tests.NeutronApiTests
-  - bionic-train-ovn:
+  - vault:
     - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
     - zaza.openstack.charm_tests.neutron.tests.SecurityTest
     - zaza.openstack.charm_tests.neutron.tests.NeutronNetworkingTest
@@ -36,7 +42,7 @@ configure:
   - zaza.openstack.charm_tests.nova.setup.create_flavors
   - zaza.openstack.charm_tests.nova.setup.manage_ssh_key
   - zaza.openstack.charm_tests.keystone.setup.add_demo_user
-  - bionic-train-ovn:
+  - vault:
     - zaza.openstack.charm_tests.vault.setup.auto_initialize
     - zaza.openstack.charm_tests.glance.setup.add_lts_image
     - zaza.openstack.charm_tests.neutron.setup.basic_overcloud_network

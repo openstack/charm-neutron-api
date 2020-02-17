@@ -22,6 +22,7 @@ series:
   - xenial
   - bionic
   - eoan
+  - focal
   - trusty
 provides:
   nrpe-external-master:
