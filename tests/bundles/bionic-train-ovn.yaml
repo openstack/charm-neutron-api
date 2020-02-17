@@ -25,26 +25,26 @@ machines:
 # time, given that machine "0" comes up way before machine "7"
 applications:
   percona-cluster:
-    charm: cs:~openstack-charmers-next/percona-cluster
+    charm: cs:percona-cluster
     num_units: 1
     options:
       source: *openstack-origin
     to:
       - '0'
   rabbitmq-server:
-    charm: cs:~openstack-charmers-next/rabbitmq-server
+    charm: cs:rabbitmq-server
     num_units: 1
     options:
       source: *openstack-origin
     to:
       - '1'
   vault:
-    charm: cs:~openstack-charmers-next/vault
+    charm: cs:vault
     num_units: 1
     to:
       - '2'
   ovn-central:
-    charm: cs:~openstack-charmers-next/ovn-central
+    charm: cs:ovn-central
     num_units: 3
     options:
       source: *openstack-origin
@@ -53,9 +53,9 @@ applications:
       - '4'
       - '5'
   neutron-api-plugin-ovn:
-    charm: cs:~openstack-charmers-next/neutron-api-plugin-ovn
+    charm: cs:neutron-api-plugin-ovn
   neutron-api:
-    charm: cs:~openstack-charmers-next/neutron-api
+    charm: cs:neutron-api
     series: *series
     num_units: 1
     options:
@@ -66,21 +66,21 @@ applications:
     to:
       - '6'
   keystone:
-    charm: cs:~openstack-charmers-next/keystone
+    charm: cs:keystone
     num_units: 1
     options:
       openstack-origin: *openstack-origin
     to:
       - '7'
   glance:
-    charm: cs:~openstack-charmers-next/glance
+    charm: cs:glance
     num_units: 1
     options:
       openstack-origin: *openstack-origin
     to:
       - '8'
   nova-cloud-controller:
-    charm: cs:~openstack-charmers-next/nova-cloud-controller
+    charm: cs:nova-cloud-controller
     num_units: 1
     options:
       network-manager: Neutron
@@ -88,9 +88,9 @@ applications:
     to:
       - '9'
   ovn-chassis:
-    charm: cs:~openstack-charmers-next/ovn-chassis
+    charm: cs:ovn-chassis
   nova-compute:
-    charm: cs:~openstack-charmers-next/nova-compute
+    charm: cs:nova-compute
     num_units: 2
     options:
       config-flags: default_ephemeral_format=ext4
@@ -102,7 +102,7 @@ applications:
       - '10'
       - '11'
   placement:
-    charm: cs:~openstack-charmers-next/placement
+    charm: cs:placement
     num_units: 1
     options:
       openstack-origin: *openstack-origin
