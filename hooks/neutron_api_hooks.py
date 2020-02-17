@@ -782,6 +782,10 @@ def certs_joined(relation_id=None):
 def certs_changed(relation_id=None, unit=None):
     process_certificates('neutron', relation_id, unit)
     configure_https()
+    # If endpoint has switched to https, need to tell
+    # nova-cc
+    for r_id in relation_ids('neutron-api'):
+        neutron_api_relation_joined(rid=r_id)
 
 
 @hooks.hook('pre-series-upgrade')
