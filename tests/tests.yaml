@@ -20,8 +20,6 @@ gate_bundles:
 smoke_bundles:
   - bionic-train
 dev_bundles:
-  - cosmic-rocky
-  - disco-stein
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
   - zaza.openstack.charm_tests.neutron.tests.SecurityTest
