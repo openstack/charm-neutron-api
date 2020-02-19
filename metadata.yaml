@@ -22,7 +22,6 @@ series:
   - xenial
   - bionic
   - eoan
-  - disco
   - trusty
 provides:
   nrpe-external-master:
