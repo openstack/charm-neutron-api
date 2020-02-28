@@ -610,6 +610,8 @@ class NeutronCCContext(context.NeutronContext):
                 'train': ['router', 'firewall_v2', 'metering', 'segments',
                           ('neutron_dynamic_routing.'
                            'services.bgp.bgp_plugin.BgpPlugin')],
+                # TODO: FWaaS was deprecated at Ussuri and will be removed
+                # during the W cycle
             }
             if cmp_release >= 'rocky' and cmp_release < 'train':
                 if ctxt.get('load_balancer_name', None):
@@ -619,6 +621,8 @@ class NeutronCCContext(context.NeutronContext):
                     # TODO(fnordahl): Remove fall-back in next charm release
                     service_plugins[release].append('lbaasv2')
 
+            # TODO: FWaaS was deprecated at Ussuri and will be removed
+            # during the W cycle
             if cmp_release >= 'stein':
                 ctxt['firewall_v2'] = True
 

@@ -30,6 +30,9 @@ options:
       WARNING: Enabling this may affect your disk I/O performance since this
       may log ALL traffic being passed via gateway. Logging configuration
       such as thresholds and a destination log file are available in the neutron-gateway charm.
+      .
+      NOTE: Neutron FWaaS has been deprecated as of the OpenStack Ussuri
+      release and will be removed during the W cycle.
   enable-port-forwarding:
     type: boolean
     default: False

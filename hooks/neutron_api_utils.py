@@ -99,6 +99,7 @@ BASE_PACKAGES = [
     'uuid',
 ]
 
+# TODO: FWaaS was deprecated at Ussuri and will be removed during the W cycle
 KILO_PACKAGES = [
     'python-neutron-lbaas',
     'python-neutron-fwaas',
