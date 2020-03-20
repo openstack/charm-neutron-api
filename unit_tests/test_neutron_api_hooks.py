@@ -408,6 +408,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         neutron_url = '%s:%s' % (host, port)
         _relation_data = {
             'enable-sriov': False,
+            'enable-hardware-offload': False,
             'neutron-plugin': 'ovs',
             'neutron-url': neutron_url,
             'neutron-security-groups': 'no',
@@ -440,6 +441,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         neutron_url = '%s:%s' % (host, port)
         _relation_data = {
             'enable-sriov': False,
+            'enable-hardware-offload': False,
             'neutron-plugin': 'ovs',
             'neutron-url': neutron_url,
             'neutron-security-groups': 'no',
