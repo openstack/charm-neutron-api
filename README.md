@@ -69,7 +69,7 @@ The charm supports enabling internal DNS resolution for cloud guests in
 accordance with the OpenStack DNS integration guide. To enable internal DNS
 resolution, the 'enable-ml2-dns' option must be set to True. When enabled, the
 domain name specified in the 'dns-domain' will be advertised as the nameserver
-search path by the dhcp agents.
+search path by the DHCP agents.
 
 The Nova compute service will leverage this functionality when enabled. When
 ports are allocated by the compute service, the dns_name of the port is
