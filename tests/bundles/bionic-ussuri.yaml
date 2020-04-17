@@ -1,175 +1,40 @@
 variables:
-  openstack-origin: &openstack-origin cloud:bionic-ussuri/proposed
+  openstack-origin: &openstack-origin cloud:bionic-ussuri
 
 series: &series bionic
 
-machines:
-  0:
-    constraints: "mem=3072M"
-  1: {}
-  2: {}
-  3: {}
-  4: {}
-  5: {}
-  6: {}
-  7: {}
-  8: {}
-  9: {}
-  10:
-    constraints: "root-disk=20G mem=4G"
-  11:
-    constraints: "root-disk=20G mem=4G"
-  12: {}
-
-# We specify machine placements for these to improve iteration
-# time, given that machine "0" comes up way before machine "7"
 applications:
   percona-cluster:
+    constraints: mem=3072M
     charm: cs:~openstack-charmers-next/percona-cluster
     num_units: 1
     options:
       source: *openstack-origin
-    to:
-      - '0'
   rabbitmq-server:
     charm: cs:~openstack-charmers-next/rabbitmq-server
     num_units: 1
     options:
       source: *openstack-origin
-    to:
-      - '1'
-  vault:
-    charm: cs:~openstack-charmers-next/vault
-    num_units: 1
-    to:
-      - '2'
-  ovn-central:
-    charm: cs:~openstack-charmers-next/ovn-central
-    num_units: 3
-    options:
-      source: *openstack-origin
-    to:
-      - '3'
-      - '4'
-      - '5'
-  neutron-api-plugin-ovn:
-    charm: cs:~openstack-charmers-next/neutron-api-plugin-ovn
   neutron-api:
-    charm: cs:~openstack-charmers-next/neutron-api
+    charm: ../../../neutron-api
     series: *series
     num_units: 1
     options:
-      # NOTE(fnordahl): At current state of upstream Neutron development this
-      # is a requirement.  Remove once fixed upstream.
-      enable-ml2-port-security: true
+      manage-neutron-plugin-legacy-mode: True
       flat-network-providers: physnet1
       neutron-security-groups: true
       openstack-origin: *openstack-origin
-    to:
-      - '6'
   keystone:
     charm: cs:~openstack-charmers-next/keystone
     num_units: 1
     options:
       openstack-origin: *openstack-origin
-    to:
-      - '7'
-  glance:
-    charm: cs:~openstack-charmers-next/glance
-    num_units: 1
-    options:
-      openstack-origin: *openstack-origin
-    to:
-      - '8'
-  nova-cloud-controller:
-    charm: cs:~openstack-charmers-next/nova-cloud-controller
-    num_units: 1
-    options:
-      network-manager: Neutron
-      openstack-origin: *openstack-origin
-    to:
-      - '9'
-  ovn-chassis:
-    charm: cs:~openstack-charmers-next/ovn-chassis
-  nova-compute:
-    charm: cs:~openstack-charmers-next/nova-compute
-    num_units: 2
-    options:
-      config-flags: default_ephemeral_format=ext4
-      enable-live-migration: true
-      enable-resize: true
-      migration-auth-type: ssh
-      openstack-origin: *openstack-origin
-    to:
-      - '10'
-      - '11'
-  placement:
-    charm: cs:~openstack-charmers-next/placement
-    num_units: 1
-    options:
-      openstack-origin: *openstack-origin
-    to:
-      - '12'
 relations:
-  - - neutron-api:shared-db
-    - percona-cluster:shared-db
-  - - neutron-api:amqp
-    - rabbitmq-server:amqp
-  - - neutron-api:neutron-api
-    - nova-cloud-controller:neutron-api
-  - - neutron-api:identity-service
-    - keystone:identity-service
-  - - keystone:shared-db
-    - percona-cluster:shared-db
-  - - nova-cloud-controller:shared-db
-    - percona-cluster:shared-db
-  - - nova-cloud-controller:amqp
-    - rabbitmq-server:amqp
-  - - nova-compute:amqp
-    - rabbitmq-server:amqp
-  - - nova-cloud-controller:identity-service
-    - keystone:identity-service
-  - - nova-cloud-controller:cloud-compute
-    - nova-compute:cloud-compute
-  - - glance:identity-service
-    - keystone:identity-service
-  - - glance:shared-db
-    - percona-cluster:shared-db
-  - - glance:amqp
-    - rabbitmq-server:amqp
-  - - nova-compute:image-service
-    - glance:image-service
-  - - nova-cloud-controller:image-service
-    - glance:image-service
-  - - placement:shared-db
-    - percona-cluster:shared-db
-  - - placement:identity-service
-    - keystone:identity-service
-  - - placement:placement
-    - nova-cloud-controller:placement
-  - - neutron-api-plugin-ovn:neutron-plugin
-    - neutron-api:neutron-plugin-api-subordinate
-  - - vault:shared-db
-    - percona-cluster:shared-db
-  - - ovn-central:certificates
-    - vault:certificates
-  - - ovn-central:ovsdb-cms
-    - neutron-api-plugin-ovn:ovsdb-cms
-  - - neutron-api:certificates
-    - vault:certificates
-  - - ovn-chassis:nova-compute
-    - nova-compute:neutron-plugin
-  - - ovn-chassis:certificates
-    - vault:certificates
-  - - ovn-chassis:ovsdb
-    - ovn-central:ovsdb
-  - - vault:certificates
-    - neutron-api-plugin-ovn:certificates
-  - - vault:certificates
-    - glance:certificates
-  - - vault:certificates
-    - keystone:certificates
-  - - vault:certificates
-    - nova-cloud-controller:certificates
-  - - vault:certificates
-    - placement:certificates
+  - - 'neutron-api:shared-db'
+    - 'percona-cluster:shared-db'
+  - - 'neutron-api:amqp'
+    - 'rabbitmq-server:amqp'
+  - - 'neutron-api:identity-service'
+    - 'keystone:identity-service'
+  - - 'keystone:shared-db'
+    - 'percona-cluster:shared-db'

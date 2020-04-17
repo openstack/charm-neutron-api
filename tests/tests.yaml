@@ -1,67 +1,27 @@
 charm_name: neutron-api
 
 gate_bundles:
-  - vault: bionic-ussuri
-  - vault: eoan-train-ovn
-  - vault: bionic-train-ovn
-  - bionic-train-dvr-snat
-  - bionic-train-dvr
+  - bionic-ussuri
   - bionic-train
-  - bionic-stein-dvr-snat
-  - bionic-stein-dvr
   - bionic-stein
   - bionic-rocky
   - bionic-queens
-  - xenial-queens-dvr-snat
-  - xenial-queens-dvr
   - xenial-queens
   - xenial-pike
   - xenial-ocata
   - xenial-mitaka
   - trusty-mitaka
 smoke_bundles:
-  - vault: bionic-ussuri
+  - bionic-ussuri
 dev_bundles:
-  - vault: focal-ussuri
-  - bionic-ussuri-ovs-dvr-snat
-  - bionic-ussuri-ovs-dvr
-  - bionic-ussuri-ovs
+  - focal-ussuri
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
+  - zaza.openstack.charm_tests.neutron.tests.NeutronCreateNetworkTest
   - zaza.openstack.charm_tests.neutron.tests.SecurityTest
-  - zaza.openstack.charm_tests.neutron.tests.NeutronNetworkingTest
   - zaza.openstack.charm_tests.policyd.tests.NeutronApiTests
-  - vault:
-    - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
-    - zaza.openstack.charm_tests.neutron.tests.SecurityTest
-    - zaza.openstack.charm_tests.neutron.tests.NeutronNetworkingTest
-    - zaza.openstack.charm_tests.policyd.tests.NeutronApiTests
 configure:
-  - zaza.openstack.charm_tests.glance.setup.add_lts_image
-  - zaza.openstack.charm_tests.neutron.setup.basic_overcloud_network
-  - zaza.openstack.charm_tests.nova.setup.create_flavors
-  - zaza.openstack.charm_tests.nova.setup.manage_ssh_key
   - zaza.openstack.charm_tests.keystone.setup.add_demo_user
-  - vault:
-    - zaza.openstack.charm_tests.vault.setup.auto_initialize
-    - zaza.openstack.charm_tests.glance.setup.add_lts_image
-    - zaza.openstack.charm_tests.neutron.setup.basic_overcloud_network
-    - zaza.openstack.charm_tests.nova.setup.create_flavors
-    - zaza.openstack.charm_tests.nova.setup.manage_ssh_key
-    - zaza.openstack.charm_tests.keystone.setup.add_demo_user
 tests_options:
   policyd:
     service: neutron
-target_deploy_status:
-  neutron-api-plugin-ovn:
-    workload-status: waiting
-    workload-status-message: "'ovsdb-cms' incomplete"
-  ovn-central:
-    workload-status: blocked
-    workload-status-message: "'certificates' missing"
-  ovn-chassis:
-    workload-status: blocked
-    workload-status-message: "'certificates' missing"
-  vault:
-    workload-status: blocked
-    workload-status-message: Vault needs to be initialized
