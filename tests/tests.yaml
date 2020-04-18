@@ -1,6 +1,7 @@
 charm_name: neutron-api
 
 gate_bundles:
+  - focal-ussuri
   - bionic-ussuri
   - bionic-train
   - bionic-stein
@@ -13,8 +14,6 @@ gate_bundles:
   - trusty-mitaka
 smoke_bundles:
   - bionic-ussuri
-dev_bundles:
-  - focal-ussuri
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
   - zaza.openstack.charm_tests.neutron.tests.NeutronCreateNetworkTest
@@ -25,3 +24,5 @@ configure:
 tests_options:
   policyd:
     service: neutron
+  force_deploy:
+    - focal-ussuri
