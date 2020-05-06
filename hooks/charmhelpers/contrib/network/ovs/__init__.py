@@ -28,6 +28,7 @@ from charmhelpers.core.host import (
     service
 )
 
+
 BRIDGE_TEMPLATE = """\
 # This veth pair is required when neutron data-port is mapped to an existing linux bridge. lp:1635067
 
@@ -83,36 +84,177 @@ def get_bridges_and_ports_map():
     return {b: get_bridge_ports(b) for b in get_bridges()}
 
 
-def add_bridge(name, datapath_type=None):
-    ''' Add the named bridge to openvswitch '''
+def _dict_to_vsctl_set(data, table, entity):
+    """Helper that takes dictionary and provides ``ovs-vsctl set`` commands
+
+    :param data: Additional data to attach to interface
+        The keys in the data dictionary map directly to column names in the
+        OpenvSwitch table specified as defined in DB-SCHEMA [0] referenced in
+        RFC 7047 [1]
+
+        There are some established conventions for keys in the external-ids
+        column of various tables, consult the OVS Integration Guide [2] for
+        more details.
+
+        NOTE(fnordahl): Technically the ``external-ids`` column is called
+        ``external_ids`` (with an underscore) and we rely on ``ovs-vsctl``'s
+        behaviour of transforming dashes to underscores for us [3] so we can
+        have a more pleasant data structure.
+
+        0: http://www.openvswitch.org/ovs-vswitchd.conf.db.5.pdf
+        1: https://tools.ietf.org/html/rfc7047
+        2: http://docs.openvswitch.org/en/latest/topics/integration/
+        3: https://github.com/openvswitch/ovs/blob/
+               20dac08fdcce4b7fda1d07add3b346aa9751cfbc/
+                   lib/db-ctl-base.c#L189-L215
+    :type data: Optional[Dict[str,Union[str,Dict[str,str]]]]
+    :param table: Name of table to operate on
+    :type table: str
+    :param entity: Name of entity to operate on
+    :type entity: str
+    :returns: '--' separated ``ovs-vsctl set`` commands
+    :rtype: Iterator[Tuple[str, str, str, str, str]]
+    """
+    for (k, v) in data.items():
+        if isinstance(v, dict):
+            entries = {
+                '{}:{}'.format(k, dk): dv for (dk, dv) in v.items()}
+        else:
+            entries = {k: v}
+        for (colk, colv) in entries.items():
+            yield ('--', 'set', table, entity, '{}={}'.format(colk, colv))
+
+
+def add_bridge(name, datapath_type=None, brdata=None, exclusive=False):
+    """Add the named bridge to openvswitch and set/update bridge data for it
+
+    :param name: Name of bridge to create
+    :type name: str
+    :param datapath_type: Add datapath_type to bridge (DEPRECATED, use brdata)
+    :type datapath_type: Optional[str]
+    :param brdata: Additional data to attach to bridge
+        The keys in the brdata dictionary map directly to column names in the
+        OpenvSwitch bridge table as defined in DB-SCHEMA [0] referenced in
+        RFC 7047 [1]
+
+        There are some established conventions for keys in the external-ids
+        column of various tables, consult the OVS Integration Guide [2] for
+        more details.
+
+        NOTE(fnordahl): Technically the ``external-ids`` column is called
+        ``external_ids`` (with an underscore) and we rely on ``ovs-vsctl``'s
+        behaviour of transforming dashes to underscores for us [3] so we can
+        have a more pleasant data structure.
+
+        0: http://www.openvswitch.org/ovs-vswitchd.conf.db.5.pdf
+        1: https://tools.ietf.org/html/rfc7047
+        2: http://docs.openvswitch.org/en/latest/topics/integration/
+        3: https://github.com/openvswitch/ovs/blob/
+               20dac08fdcce4b7fda1d07add3b346aa9751cfbc/
+                   lib/db-ctl-base.c#L189-L215
+    :type brdata: Optional[Dict[str,Union[str,Dict[str,str]]]]
+    :param exclusive: If True, raise exception if bridge exists
+    :type exclusive: bool
+    :raises: subprocess.CalledProcessError
+    """
     log('Creating bridge {}'.format(name))
-    cmd = ["ovs-vsctl", "--", "--may-exist", "add-br", name]
+    cmd = ['ovs-vsctl', '--']
+    if not exclusive:
+        cmd.append('--may-exist')
+    cmd.extend(('add-br', name))
+    if brdata:
+        for setcmd in _dict_to_vsctl_set(brdata, 'bridge', name):
+            cmd.extend(setcmd)
     if datapath_type is not None:
+        log('DEPRECATION WARNING: add_bridge called with datapath_type, '
+            'please use the brdata keyword argument instead.')
         cmd += ['--', 'set', 'bridge', name,
                 'datapath_type={}'.format(datapath_type)]
     subprocess.check_call(cmd)
 
 
 def del_bridge(name):
-    ''' Delete the named bridge from openvswitch '''
+    """Delete the named bridge from openvswitch
+
+    :param name: Name of bridge to remove
+    :type name: str
+    :raises: subprocess.CalledProcessError
+    """
     log('Deleting bridge {}'.format(name))
     subprocess.check_call(["ovs-vsctl", "--", "--if-exists", "del-br", name])
 
 
-def add_bridge_port(name, port, promisc=False):
-    ''' Add a port to the named openvswitch bridge '''
+def add_bridge_port(name, port, promisc=False, ifdata=None, exclusive=False,
+                    linkup=True, portdata=None):
+    """Add port to bridge and optionally set/update interface data for it
+
+    :param name: Name of bridge to attach port to
+    :type name: str
+    :param port: Name of port as represented in netdev
+    :type port: str
+    :param promisc: Whether to set promiscuous mode on interface
+                    True=on, False=off, None leave untouched
+    :type promisc: Optional[bool]
+    :param ifdata: Additional data to attach to interface
+        The keys in the ifdata dictionary map directly to column names in the
+        OpenvSwitch Interface table as defined in DB-SCHEMA [0] referenced in
+        RFC 7047 [1]
+
+        There are some established conventions for keys in the external-ids
+        column of various tables, consult the OVS Integration Guide [2] for
+        more details.
+
+        NOTE(fnordahl): Technically the ``external-ids`` column is called
+        ``external_ids`` (with an underscore) and we rely on ``ovs-vsctl``'s
+        behaviour of transforming dashes to underscores for us [3] so we can
+        have a more pleasant data structure.
+
+        0: http://www.openvswitch.org/ovs-vswitchd.conf.db.5.pdf
+        1: https://tools.ietf.org/html/rfc7047
+        2: http://docs.openvswitch.org/en/latest/topics/integration/
+        3: https://github.com/openvswitch/ovs/blob/
+               20dac08fdcce4b7fda1d07add3b346aa9751cfbc/
+                   lib/db-ctl-base.c#L189-L215
+    :type ifdata: Optional[Dict[str,Union[str,Dict[str,str]]]]
+    :param exclusive: If True, raise exception if port exists
+    :type exclusive: bool
+    :param linkup: Bring link up
+    :type linkup: bool
+    :param portdata: Additional data to attach to port. Similar to ifdata.
+    :type portdata: Optional[Dict[str,Union[str,Dict[str,str]]]]
+    :raises: subprocess.CalledProcessError
+    """
+    cmd = ['ovs-vsctl', '--']
+    if not exclusive:
+        cmd.append('--may-exist')
+    cmd.extend(('add-port', name, port))
+    for ovs_table, data in (('Interface', ifdata), ('Port', portdata)):
+        if data:
+            for setcmd in _dict_to_vsctl_set(data, ovs_table, port):
+                cmd.extend(setcmd)
+
     log('Adding port {} to bridge {}'.format(port, name))
-    subprocess.check_call(["ovs-vsctl", "--", "--may-exist", "add-port",
-                           name, port])
-    subprocess.check_call(["ip", "link", "set", port, "up"])
+    subprocess.check_call(cmd)
+    if linkup:
+        # This is mostly a workaround for CI environments, in the real world
+        # the bare metal provider would most likely have configured and brought
+        # up the link for us.
+        subprocess.check_call(["ip", "link", "set", port, "up"])
     if promisc:
         subprocess.check_call(["ip", "link", "set", port, "promisc", "on"])
-    else:
+    elif promisc is False:
         subprocess.check_call(["ip", "link", "set", port, "promisc", "off"])
 
 
 def del_bridge_port(name, port):
-    ''' Delete a port from the named openvswitch bridge '''
+    """Delete a port from the named openvswitch bridge
+
+    :param name: Name of bridge to remove port from
+    :type name: str
+    :param port: Name of port to remove
+    :type port: str
+    :raises: subprocess.CalledProcessError
+    """
     log('Deleting port {} from bridge {}'.format(port, name))
     subprocess.check_call(["ovs-vsctl", "--", "--if-exists", "del-port",
                            name, port])
@@ -120,12 +262,88 @@ def del_bridge_port(name, port):
     subprocess.check_call(["ip", "link", "set", port, "promisc", "off"])
 
 
-def add_ovsbridge_linuxbridge(name, bridge):
-    ''' Add linux bridge to the named openvswitch bridge
+def add_bridge_bond(bridge, port, interfaces, portdata=None, ifdatamap=None,
+                    exclusive=False):
+    """Add bonded port in bridge from interfaces.
+
+    :param bridge: Name of bridge to add bonded port to
+    :type bridge: str
+    :param port: Name of created port
+    :type port: str
+    :param interfaces: Underlying interfaces that make up the bonded port
+    :type interfaces: Iterator[str]
+    :param portdata: Additional data to attach to the created bond port
+        See _dict_to_vsctl_set() for detailed description.
+        Example:
+        {
+            'bond-mode': 'balance-tcp',
+            'lacp': 'active',
+            'other-config': {
+                'lacp-time': 'fast',
+            },
+        }
+    :type portdata: Optional[Dict[str,Union[str,Dict[str,str]]]]
+    :param ifdatamap: Map of data to attach to created bond interfaces
+        See _dict_to_vsctl_set() for detailed description.
+        Example:
+        {
+            'eth0': {
+                'type': 'dpdk',
+                'mtu-request': '9000',
+                'options': {
+                    'dpdk-devargs': '0000:01:00.0',
+                },
+            },
+        }
+    :type ifdatamap: Optional[Dict[str,Dict[str,Union[str,Dict[str,str]]]]]
+    :param exclusive: If True, raise exception if port exists
+    :type exclusive: bool
+    :raises: subprocess.CalledProcessError
+    """
+    cmd = ['ovs-vsctl', '--']
+    if not exclusive:
+        cmd.append('--may-exist')
+    cmd.extend(('add-bond', bridge, port))
+    cmd.extend(interfaces)
+    if portdata:
+        for setcmd in _dict_to_vsctl_set(portdata, 'port', port):
+            cmd.extend(setcmd)
+    if ifdatamap:
+        for ifname, ifdata in ifdatamap.items():
+            for setcmd in _dict_to_vsctl_set(ifdata, 'Interface', ifname):
+                cmd.extend(setcmd)
+    subprocess.check_call(cmd)
+
+
+def add_ovsbridge_linuxbridge(name, bridge, ifdata=None):
+    """Add linux bridge to the named openvswitch bridge
+
     :param name: Name of ovs bridge to be added to Linux bridge
+    :type name: str
     :param bridge: Name of Linux bridge to be added to ovs bridge
-    :returns: True if veth is added between ovs bridge and linux bridge,
-    False otherwise'''
+    :type name: str
+    :param ifdata: Additional data to attach to interface
+        The keys in the ifdata dictionary map directly to column names in the
+        OpenvSwitch Interface table as defined in DB-SCHEMA [0] referenced in
+        RFC 7047 [1]
+
+        There are some established conventions for keys in the external-ids
+        column of various tables, consult the OVS Integration Guide [2] for
+        more details.
+
+        NOTE(fnordahl): Technically the ``external-ids`` column is called
+        ``external_ids`` (with an underscore) and we rely on ``ovs-vsctl``'s
+        behaviour of transforming dashes to underscores for us [3] so we can
+        have a more pleasant data structure.
+
+        0: http://www.openvswitch.org/ovs-vswitchd.conf.db.5.pdf
+        1: https://tools.ietf.org/html/rfc7047
+        2: http://docs.openvswitch.org/en/latest/topics/integration/
+        3: https://github.com/openvswitch/ovs/blob/
+               20dac08fdcce4b7fda1d07add3b346aa9751cfbc/
+                   lib/db-ctl-base.c#L189-L215
+    :type ifdata: Optional[Dict[str,Union[str,Dict[str,str]]]]
+    """
     try:
         import netifaces
     except ImportError:
@@ -177,7 +395,7 @@ def add_ovsbridge_linuxbridge(name, bridge):
                                             bridge=bridge))
 
     subprocess.check_call(["ifup", linuxbridge_port])
-    add_bridge_port(name, linuxbridge_port)
+    add_bridge_port(name, linuxbridge_port, ifdata=ifdata)
 
 
 def is_linuxbridge_interface(port):
@@ -303,3 +521,21 @@ def port_to_br(port):
         ).decode('UTF-8').strip()
     except subprocess.CalledProcessError:
         return None
+
+
+def ovs_appctl(target, args):
+    """Run `ovs-appctl` for target with args and return output.
+
+    :param target: Name of daemon to contact.  Unless target begins with '/',
+                   `ovs-appctl` looks for a pidfile and will build the path to
+                   a /var/run/openvswitch/target.pid.ctl for you.
+    :type target: str
+    :param args: Command and arguments to pass to `ovs-appctl`
+    :type args: Tuple[str, ...]
+    :returns: Output from command
+    :rtype: str
+    :raises: subprocess.CalledProcessError
+    """
+    cmd = ['ovs-appctl', '-t', target]
+    cmd.extend(args)
+    return subprocess.check_output(cmd, universal_newlines=True)
