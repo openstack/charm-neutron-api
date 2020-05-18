@@ -140,7 +140,7 @@ class OVNClusterStatus(object):
         return self.leader == 'self'
 
 
-def cluster_status(target, schema=None, use_ovs_appctl=False):
+def cluster_status(target, schema=None, use_ovs_appctl=False, rundir=None):
     """Retrieve status information from clustered OVSDB.
 
     :param target: Usually one of 'ovsdb-server', 'ovnnb_db', 'ovnsb_db', can
@@ -151,6 +151,8 @@ def cluster_status(target, schema=None, use_ovs_appctl=False):
     :param use_ovs_appctl: The ``ovn-appctl`` command appeared in OVN 20.03,
                            set this to True to use ``ovs-appctl`` instead.
     :type use_ovs_appctl: bool
+    :param rundir: Override path to sockets
+    :type rundir: Optional[str]
     :returns: cluster status data object
     :rtype: OVNClusterStatus
     :raises: subprocess.CalledProcessError, KeyError, RuntimeError
@@ -164,8 +166,9 @@ def cluster_status(target, schema=None, use_ovs_appctl=False):
 
     status = {}
     k = ''
-    for line in ovn_appctl(target, 'cluster/status',
-                           schema or schema_map[target],
+    for line in ovn_appctl(target,
+                           ('cluster/status', schema or schema_map[target]),
+                           rundir=rundir,
                            use_ovs_appctl=use_ovs_appctl).splitlines():
         if k and line.startswith(' '):
             # there is no key which means this is a instance of a multi-line/
@@ -222,7 +225,7 @@ def is_northd_active():
     :rtype: bool
     """
     try:
-        for line in ovn_appctl('ovn-northd', 'status').splitlines():
+        for line in ovn_appctl('ovn-northd', ('status',)).splitlines():
             if line.startswith('Status:') and 'active' in line:
                 return True
     except subprocess.CalledProcessError:
