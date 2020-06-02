@@ -13,17 +13,18 @@ description: |
   .
   This charm provides the OpenStack Neutron API service.
 tags:
-  - openstack
+- openstack
 extra-bindings:
   public:
   admin:
   internal:
 series:
-  - xenial
-  - bionic
-  - eoan
-  - focal
-  - trusty
+- xenial
+- bionic
+- eoan
+- focal
+- trusty
+- groovy
 provides:
   nrpe-external-master:
     interface: nrpe-external-master
