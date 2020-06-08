@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch, call
 from collections import OrderedDict
 from copy import deepcopy
 

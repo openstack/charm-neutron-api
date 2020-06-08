@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mock
+from unittest import mock
 
 mock.patch('charmhelpers.core.hookenv.status_set').start()
 with mock.patch('charmhelpers.core.hookenv.config') as config:

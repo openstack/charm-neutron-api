@@ -15,7 +15,7 @@
 import json
 import sys
 
-from mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch, call
 from test_utils import CharmTestCase
 
 # python-apt is not installed as part of test-requirements but is imported by

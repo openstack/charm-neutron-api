@@ -14,7 +14,7 @@
 
 import os
 
-from mock import patch
+from unittest.mock import patch
 
 os.environ['JUJU_UNIT_NAME'] = 'neutron-api'
 
