@@ -779,3 +779,9 @@ options:
       override YAML files in the service's policy.d directory.  The resource
       file should be a ZIP file containing at least one yaml file with a .yaml
       or .yml extension.  If False then remove the overrides.
+  enable-igmp-snooping:
+    type: boolean
+    default: False
+    description: |
+      If True, on Ussuri or later, igmp snooping will be set on OVS and OVN
+      control plane will learn about multicast traffic going on in the cluster.
