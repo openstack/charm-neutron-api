@@ -370,6 +370,10 @@ class NeutronCCContext(context.NeutronContext):
     def neutron_l3ha(self):
         return get_l3ha()
 
+    @property
+    def neutron_igmp_snoop(self):
+        return config('enable-igmp-snooping')
+
     # Do not need the plugin agent installed on the api server
     def _ensure_packages(self):
         pass
@@ -445,6 +449,7 @@ class NeutronCCContext(context.NeutronContext):
         ctxt['external_network'] = config('neutron-external-network')
         release = os_release('neutron-server')
         cmp_release = CompareOpenStackReleases(release)
+        ctxt['enable_igmp_snooping'] = self.neutron_igmp_snoop
         if config('neutron-plugin') == 'vsp' and cmp_release < 'newton':
             _config = config()
             for k, v in _config.items():

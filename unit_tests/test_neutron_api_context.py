@@ -428,6 +428,9 @@ class NeutronCCContextTest(CharmTestCase):
         self.test_config.set('mem-password', 'heslo')
         self.test_config.set('enable-ml2-port-security', True)
         self.test_config.set('dhcp-agents-per-network', 3)
+        # Although set as True for all tests, only Ussuri templates
+        # can apply this option.
+        self.test_config.set('enable-igmp-snooping', True)
 
     def tearDown(self):
         super(NeutronCCContextTest, self).tearDown()
@@ -448,6 +451,7 @@ class NeutronCCContextTest(CharmTestCase):
             'dhcp_agents_per_network': 3,
             'enable_sriov': False,
             'external_network': 'bob',
+            'enable_igmp_snooping': True,
             'neutron_bind_port': self.api_port,
             'verbose': True,
             'l2_population': True,
@@ -497,6 +501,7 @@ class NeutronCCContextTest(CharmTestCase):
             'enable_sriov': False,
             'external_network': 'bob',
             'global_physnet_mtu': 1500,
+            'enable_igmp_snooping': True,
             'neutron_bind_port': self.api_port,
             'verbose': True,
             'l2_population': True,
@@ -602,6 +607,7 @@ class NeutronCCContextTest(CharmTestCase):
             'dhcp_agents_per_network': 3,
             'enable_sriov': False,
             'external_network': 'bob',
+            'enable_igmp_snooping': True,
             'neutron_bind_port': self.api_port,
             'verbose': True,
             'l2_population': True,
@@ -654,6 +660,7 @@ class NeutronCCContextTest(CharmTestCase):
             'l3_ha': True,
             'mechanism_drivers': 'openvswitch',
             'external_network': 'bob',
+            'enable_igmp_snooping': True,
             'neutron_bind_port': self.api_port,
             'verbose': True,
             'l2_population': False,
@@ -725,6 +732,7 @@ class NeutronCCContextTest(CharmTestCase):
             'enable_sriov': True,
             'supported_pci_vendor_devs': '1111:3333,2222:4444',
             'external_network': 'bob',
+            'enable_igmp_snooping': True,
             'neutron_bind_port': self.api_port,
             'verbose': True,
             'l2_population': True,
