@@ -14,6 +14,9 @@ gate_bundles:
   - trusty-mitaka
 smoke_bundles:
   - bionic-ussuri
+dev_bundles:
+  - groovy-victoria
+  - focal-victoria
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
   - zaza.openstack.charm_tests.neutron.tests.NeutronCreateNetworkTest
@@ -25,4 +28,4 @@ tests_options:
   policyd:
     service: neutron
   force_deploy:
-    - focal-ussuri
+    - groovy-victoria
