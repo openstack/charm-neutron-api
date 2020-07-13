@@ -372,8 +372,10 @@ class Config(dict):
             try:
                 self._prev_dict = json.load(f)
             except ValueError as e:
-                log('Unable to parse previous config data - {}'.format(str(e)),
-                    level=ERROR)
+                log('Found but was unable to parse previous config data, '
+                    'ignoring which will report all values as changed - {}'
+                    .format(str(e)), level=ERROR)
+                return
         for k, v in copy.deepcopy(self._prev_dict).items():
             if k not in self:
                 self[k] = v
