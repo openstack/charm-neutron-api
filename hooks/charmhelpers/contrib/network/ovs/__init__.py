@@ -14,10 +14,12 @@
 
 ''' Helpers for interacting with OpenvSwitch '''
 import hashlib
-import subprocess
 import os
+import re
 import six
+import subprocess
 
+from charmhelpers import deprecate
 from charmhelpers.fetch import apt_install
 
 
@@ -25,6 +27,8 @@ from charmhelpers.core.hookenv import (
     log, WARNING, INFO, DEBUG
 )
 from charmhelpers.core.host import (
+    CompareHostReleases,
+    lsb_release,
     service
 )
 
@@ -246,20 +250,23 @@ def add_bridge_port(name, port, promisc=False, ifdata=None, exclusive=False,
         subprocess.check_call(["ip", "link", "set", port, "promisc", "off"])
 
 
-def del_bridge_port(name, port):
+def del_bridge_port(name, port, linkdown=True):
     """Delete a port from the named openvswitch bridge
 
     :param name: Name of bridge to remove port from
     :type name: str
     :param port: Name of port to remove
     :type port: str
+    :param linkdown: Whether to set link down on interface (default: True)
+    :type linkdown: bool
     :raises: subprocess.CalledProcessError
     """
     log('Deleting port {} from bridge {}'.format(port, name))
     subprocess.check_call(["ovs-vsctl", "--", "--if-exists", "del-port",
                            name, port])
-    subprocess.check_call(["ip", "link", "set", port, "down"])
-    subprocess.check_call(["ip", "link", "set", port, "promisc", "off"])
+    if linkdown:
+        subprocess.check_call(["ip", "link", "set", port, "down"])
+        subprocess.check_call(["ip", "link", "set", port, "promisc", "off"])
 
 
 def add_bridge_bond(bridge, port, interfaces, portdata=None, ifdatamap=None,
@@ -315,7 +322,8 @@ def add_bridge_bond(bridge, port, interfaces, portdata=None, ifdatamap=None,
     subprocess.check_call(cmd)
 
 
-def add_ovsbridge_linuxbridge(name, bridge, ifdata=None):
+@deprecate('see lp:1877594', '2021-01', log=log)
+def add_ovsbridge_linuxbridge(name, bridge, ifdata=None, portdata=None):
     """Add linux bridge to the named openvswitch bridge
 
     :param name: Name of ovs bridge to be added to Linux bridge
@@ -343,6 +351,17 @@ def add_ovsbridge_linuxbridge(name, bridge, ifdata=None):
                20dac08fdcce4b7fda1d07add3b346aa9751cfbc/
                    lib/db-ctl-base.c#L189-L215
     :type ifdata: Optional[Dict[str,Union[str,Dict[str,str]]]]
+    :param portdata: Additional data to attach to port. Similar to ifdata.
+    :type portdata: Optional[Dict[str,Union[str,Dict[str,str]]]]
+
+    WARNINGS:
+    * The `ifup` command (NetworkManager) must be available on the system for
+      this to work. Before bionic this was shipped by default. On bionic and
+      newer you need to install the package `ifupdown`. This might however cause
+      issues when deploying to LXD, see lp:1877594, which is why this function
+      isn't supported anymore.
+    * On focal and newer this function won't even try to run `ifup` and raise
+      directly.
     """
     try:
         import netifaces
@@ -377,25 +396,42 @@ def add_ovsbridge_linuxbridge(name, bridge, ifdata=None):
         ovsbridge_port = "cvo{}".format(base)
         linuxbridge_port = "cvb{}".format(base)
 
+    network_interface_already_exists = False
     interfaces = netifaces.interfaces()
     for interface in interfaces:
         if interface == ovsbridge_port or interface == linuxbridge_port:
             log('Interface {} already exists'.format(interface), level=INFO)
-            return
+            network_interface_already_exists = True
+            break
 
     log('Adding linuxbridge {} to ovsbridge {}'.format(bridge, name),
         level=INFO)
 
-    check_for_eni_source()
+    if not network_interface_already_exists:
+        setup_eni()  # will raise on focal+
 
-    with open('/etc/network/interfaces.d/{}.cfg'.format(
-            linuxbridge_port), 'w') as config:
-        config.write(BRIDGE_TEMPLATE.format(linuxbridge_port=linuxbridge_port,
-                                            ovsbridge_port=ovsbridge_port,
-                                            bridge=bridge))
+        with open('/etc/network/interfaces.d/{}.cfg'.format(
+                linuxbridge_port), 'w') as config:
+            config.write(BRIDGE_TEMPLATE.format(
+                linuxbridge_port=linuxbridge_port,
+                ovsbridge_port=ovsbridge_port, bridge=bridge))
 
-    subprocess.check_call(["ifup", linuxbridge_port])
-    add_bridge_port(name, linuxbridge_port, ifdata=ifdata)
+        try:
+            # NOTE(lourot): 'ifup <name>' can't be replaced by
+            # 'ip link set <name> up' as the latter won't parse
+            # /etc/network/interfaces*
+            subprocess.check_call(['ifup', linuxbridge_port])
+        except FileNotFoundError:
+            # NOTE(lourot): on bionic and newer, 'ifup' isn't installed by
+            # default. It has been replaced by netplan.io but we can't use it
+            # yet because of lp:1876730. For the time being, charms using this
+            # have to install 'ifupdown' on bionic and newer. This will however
+            # cause issues when deploying to LXD, see lp:1877594.
+            raise RuntimeError('ifup: command not found. Did this charm forget '
+                               'to install ifupdown?')
+
+    add_bridge_port(name, linuxbridge_port, ifdata=ifdata, exclusive=False,
+                    portdata=portdata)
 
 
 def is_linuxbridge_interface(port):
@@ -455,16 +491,33 @@ def get_certificate():
         return None
 
 
-def check_for_eni_source():
-    ''' Juju removes the source line when setting up interfaces,
-    replace if missing '''
+@deprecate('see lp:1877594', '2021-01', log=log)
+def setup_eni():
+    """Makes sure /etc/network/interfaces.d/ exists and will be parsed.
 
+    When setting up interfaces, Juju removes from
+    /etc/network/interfaces the line sourcing interfaces.d/
+
+    WARNING: Not supported on focal and newer anymore. Will raise.
+    """
+    release = CompareHostReleases(lsb_release()['DISTRIB_CODENAME'])
+    if release >= 'focal':
+        raise RuntimeError("NetworkManager isn't supported anymore")
+
+    if not os.path.exists('/etc/network/interfaces.d'):
+        os.makedirs('/etc/network/interfaces.d', mode=0o755)
     with open('/etc/network/interfaces', 'r') as eni:
         for line in eni:
-            if line == 'source /etc/network/interfaces.d/*':
+            if re.search(r'^\s*source\s+/etc/network/interfaces.d/\*\s*$',
+                         line):
                 return
     with open('/etc/network/interfaces', 'a') as eni:
         eni.write('\nsource /etc/network/interfaces.d/*')
+
+
+@deprecate('use setup_eni() instead', '2021-01', log=log)
+def check_for_eni_source():
+    setup_eni()
 
 
 def full_restart():
