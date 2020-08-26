@@ -655,31 +655,37 @@ class TestNeutronAPIUtils(CharmTestCase):
                'icehouse']
         self.subprocess.check_output.assert_called_with(cmd)
 
+    @patch.object(nutils, 'relation_ids')
     @patch.object(nutils, 'relation_set')
-    @patch.object(nutils, 'is_db_initialised', lambda: False)
     @patch.object(nutils, 'relation_get')
+    @patch.object(nutils, 'is_leader')
+    @patch.object(nutils, 'is_db_initialised')
     @patch.object(nutils, 'local_unit', lambda *args: 'unit/0')
-    def test_check_local_db_actions_complete_by_self(self, mock_relation_get,
-                                                     mock_relation_set):
-        mock_relation_get.return_value = {}
+    def test_check_local_db_actions_complete_leader(self,
+                                                    mock_is_db_initialised,
+                                                    mock_is_leader,
+                                                    mock_relation_get,
+                                                    mock_relation_set,
+                                                    mock_relation_ids):
+        mock_is_leader.return_value = True
         nutils.check_local_db_actions_complete()
-        self.assertFalse(mock_relation_set.called)
-
-        mock_relation_get.return_value = {nutils.NEUTRON_DB_INIT_RKEY:
-                                          'unit/0-1234'}
-        nutils.check_local_db_actions_complete()
-        self.assertFalse(mock_relation_set.called)
+        mock_relation_get.assert_not_called()
+        mock_relation_set.assert_not_called()
+        self.service_restart.assert_not_called()
 
     @patch.object(nutils, 'relation_ids')
     @patch.object(nutils, 'relation_set')
     @patch.object(nutils, 'relation_get')
+    @patch.object(nutils, 'is_leader')
     @patch.object(nutils, 'is_db_initialised')
     @patch.object(nutils, 'local_unit', lambda *args: 'unit/0')
-    def test_check_local_db_actions_complete(self,
-                                             mock_is_db_initialised,
-                                             mock_relation_get,
-                                             mock_relation_set,
-                                             mock_relation_ids):
+    def test_check_local_db_actions_complete_non_leader(self,
+                                                        mock_is_db_initialised,
+                                                        mock_is_leader,
+                                                        mock_relation_get,
+                                                        mock_relation_set,
+                                                        mock_relation_ids):
+        mock_is_leader.return_value = False
         shared_db_rel_id = 'shared-db:1'
         mock_relation_ids.return_value = [shared_db_rel_id]
         mock_is_db_initialised.return_value = True
@@ -697,7 +703,8 @@ class TestNeutronAPIUtils(CharmTestCase):
         init_db_val = 'unit/1-{}-1234'.format(shared_db_rel_id)
         r_settings = {nutils.NEUTRON_DB_INIT_RKEY: init_db_val}
         nutils.check_local_db_actions_complete()
-        calls = [call(**{nutils.NEUTRON_DB_INIT_ECHO_RKEY: init_db_val})]
+        calls = [call(**{nutils.NEUTRON_DB_INIT_ECHO_RKEY: init_db_val,
+                         nutils.NEUTRON_DB_INIT_RKEY: None})]
         mock_relation_set.assert_has_calls(calls)
         self.service_restart.assert_called_with('neutron-server')
 
