@@ -53,6 +53,7 @@ from charmhelpers.core.hookenv import (
     relation_get,
     relation_set,
     local_unit,
+    is_leader,
 )
 
 from charmhelpers.fetch import (
@@ -295,7 +296,8 @@ def check_local_db_actions_complete():
 
     NOTE: this must only be called from peer relation context.
     """
-    if not is_db_initialised():
+    # leader must not respond to notifications
+    if is_leader() or not is_db_initialised():
         return
 
     settings = relation_get() or {}
@@ -314,8 +316,10 @@ def check_local_db_actions_complete():
                     "initialisation", level=DEBUG)
                 service_restart('neutron-server')
 
-            # Echo notification
-            relation_set(**{NEUTRON_DB_INIT_ECHO_RKEY: init_id})
+            # Echo notification and ensure init key unset since we are not
+            # leader anymore.
+            relation_set(**{NEUTRON_DB_INIT_ECHO_RKEY: init_id,
+                            NEUTRON_DB_INIT_RKEY: None})
 
 
 def api_port(service):
@@ -789,19 +793,23 @@ def migrate_neutron_database(upgrade=False):
                'head']
         subprocess.check_output(cmd)
 
+    if not is_unit_paused_set():
+        log("Restarting neutron-server following database migration",
+            level=DEBUG)
+        service_restart('neutron-server')
+
     cluster_rids = relation_ids('cluster')
     if cluster_rids:
         # Notify peers so that services get restarted
         log("Notifying peer(s) that db is initialised and restarting services",
             level=DEBUG)
+        # Use the same uuid for all notifications in this cycle to make
+        # them easier to identify.
+        n_id = uuid.uuid4()
         for r_id in cluster_rids:
-            if not is_unit_paused_set():
-                service_restart('neutron-server')
-
-            # Notify peers that tey should also restart their services
+            # Notify peers that they should also restart their services
             shared_db_rel_id = (relation_ids('shared-db') or [None])[0]
-            id = "{}-{}-{}".format(local_unit(), shared_db_rel_id,
-                                   uuid.uuid4())
+            id = "{}-{}-{}".format(local_unit(), shared_db_rel_id, n_id)
             relation_set(relation_id=r_id, **{NEUTRON_DB_INIT_RKEY: id})
 
 
