@@ -1,6 +1,7 @@
 charm_name: neutron-api
 
 gate_bundles:
+  - focal-victoria
   - focal-ussuri
   - bionic-ussuri
   - bionic-train
@@ -16,7 +17,6 @@ smoke_bundles:
   - bionic-ussuri
 dev_bundles:
   - groovy-victoria
-  - focal-victoria
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
   - zaza.openstack.charm_tests.neutron.tests.NeutronCreateNetworkTest
