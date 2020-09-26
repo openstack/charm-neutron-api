@@ -101,9 +101,9 @@ class TestConfig(object):
         return self.config
 
     def set(self, attr, value):
-            if attr not in self.config:
-                raise KeyError
-            self.config[attr] = value
+        if attr not in self.config:
+            raise KeyError
+        self.config[attr] = value
 
 
 class TestRelation(object):

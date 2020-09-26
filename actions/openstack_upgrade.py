@@ -45,5 +45,6 @@ def openstack_upgrade():
                                     CONFIGS)):
         config_changed()
 
+
 if __name__ == '__main__':
     openstack_upgrade()

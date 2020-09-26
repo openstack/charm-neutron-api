@@ -63,5 +63,6 @@ def main():
     config['neutron_config'] = dict(conf)
     return audits.action_parse_results(audits.run(config))
 
+
 if __name__ == "__main__":
     sys.exit(main())

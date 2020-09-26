@@ -876,12 +876,12 @@ class NeutronApiApiPasteContext(context.OSContextGenerator):
             t, n, c = [m.get(v) for v in ['type', 'name', 'config']]
             # note that dict has to be non-empty
             if not types_valid(t, n, c):
-                    raise ValueError('Extra middleware key type(s) are'
-                                     ' invalid: {}'.format(repr(m)))
+                raise ValueError('Extra middleware key type(s) are'
+                                 ' invalid: {}'.format(repr(m)))
             if not mtype_valid(t):
-                    raise ValueError('Extra middleware type key is not'
-                                     ' a valid PasteDeploy middleware '
-                                     'type {}'.format(repr(t)))
+                raise ValueError('Extra middleware type key is not'
+                                 ' a valid PasteDeploy middleware '
+                                 'type {}'.format(repr(t)))
             if not c:
                 raise ValueError('Extra middleware config dictionary'
                                  ' is empty')
@@ -893,7 +893,7 @@ class NeutronApiApiPasteContext(context.OSContextGenerator):
         if rdata_middleware:
             try:
                 middleware = ast.literal_eval(rdata_middleware)
-            except:
+            except Exception:
                 import traceback
                 log(traceback.format_exc())
                 raise ValueError('Invalid extra middleware data'

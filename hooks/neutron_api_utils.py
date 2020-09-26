@@ -877,7 +877,9 @@ def router_feature_present(feature):
             return True
     return False
 
+
 l3ha_router_present = partial(router_feature_present, feature='ha')
+
 
 dvr_router_present = partial(router_feature_present, feature='distributed')
 
@@ -892,7 +894,7 @@ def neutron_ready():
         neutron_client.list_routers()
         log('neutron client ready')
         return True
-    except:
+    except Exception:
         log('neutron query failed, neutron not ready ')
         return False
 
@@ -953,7 +955,7 @@ def check_optional_relations(configs):
     if relation_ids('ha'):
         try:
             get_hacluster_config()
-        except:
+        except Exception:
             return ('blocked',
                     'hacluster missing configuration: '
                     'vip, vip_iface, vip_cidr')

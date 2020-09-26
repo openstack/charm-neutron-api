@@ -36,6 +36,11 @@ class SimpleOVSDB(object):
     for br in ovsdb.bridge:
         if br['name'] == 'br-test':
             ovsdb.bridge.set(br['uuid'], 'external_ids:charm', 'managed')
+
+    WARNING: If a list type field only have one item `ovs-vsctl` will present
+    it as a single item. Since we do not know the schema we have no way of
+    knowing what fields should be de-serialized as lists so the caller has
+    to be careful of checking the type of values returned from this library.
     """
 
     # For validation we keep a complete map of currently known good tool and
@@ -157,6 +162,51 @@ class SimpleOVSDB(object):
             self._tool = tool
             self._table = table
 
+        def _deserialize_ovsdb(self, data):
+            """Deserialize OVSDB RFC7047 section 5.1 data.
+
+            :param data: Multidimensional list where first row contains RFC7047
+                         type information
+            :type data: List[str,any]
+            :returns: Deserialized data.
+            :rtype: any
+            """
+            # When using json formatted output to OVS commands Internal OVSDB
+            # notation may occur that require further deserializing.
+            # Reference: https://tools.ietf.org/html/rfc7047#section-5.1
+            ovs_type_cb_map = {
+                'uuid': uuid.UUID,
+                # NOTE: OVSDB sets have overloaded type
+                # see special handling below
+                'set': list,
+                'map': dict,
+            }
+            assert len(data) > 1, ('Invalid data provided, expecting list '
+                                   'with at least two elements.')
+            if data[0] == 'set':
+                # special handling for set
+                #
+                # it is either a list of strings or a list of typed lists.
+                # taste first element to see which it is
+                for el in data[1]:
+                    # NOTE: We lock this handling down to the `uuid` type as
+                    # that is the only one we have a practical example of.
+                    # We could potentially just handle this generally based on
+                    # the types listed in `ovs_type_cb_map` but let's open for
+                    # that as soon as we have a concrete example to validate on
+                    if isinstance(
+                            el, list) and len(el) and el[0] == 'uuid':
+                        decoded_set = []
+                        for el in data[1]:
+                            decoded_set.append(self._deserialize_ovsdb(el))
+                        return(decoded_set)
+                    # fall back to normal processing below
+                    break
+
+            # Use map to deserialize data with fallback to `str`
+            f = ovs_type_cb_map.get(data[0], str)
+            return f(data[1])
+
         def _find_tbl(self, condition=None):
             """Run and parse output of OVSDB `find` command.
 
@@ -165,15 +215,6 @@ class SimpleOVSDB(object):
             :returns: Dictionary with data
             :rtype: Dict[str, any]
             """
-            # When using json formatted output to OVS commands Internal OVSDB
-            # notation may occur that require further deserializing.
-            # Reference: https://tools.ietf.org/html/rfc7047#section-5.1
-            ovs_type_cb_map = {
-                'uuid': uuid.UUID,
-                # FIXME sets also appear to sometimes contain type/value tuples
-                'set': list,
-                'map': dict,
-            }
             cmd = [self._tool, '-f', 'json', 'find', self._table]
             if condition:
                 cmd.append(condition)
@@ -182,9 +223,8 @@ class SimpleOVSDB(object):
             for row in data['data']:
                 values = []
                 for col in row:
-                    if isinstance(col, list):
-                        f = ovs_type_cb_map.get(col[0], str)
-                        values.append(f(col[1]))
+                    if isinstance(col, list) and len(col) > 1:
+                        values.append(self._deserialize_ovsdb(col))
                     else:
                         values.append(col)
                 yield dict(zip(data['headings'], values))

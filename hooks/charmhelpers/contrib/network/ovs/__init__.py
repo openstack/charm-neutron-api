@@ -13,6 +13,7 @@
 # limitations under the License.
 
 ''' Helpers for interacting with OpenvSwitch '''
+import collections
 import hashlib
 import os
 import re
@@ -20,8 +21,8 @@ import six
 import subprocess
 
 from charmhelpers import deprecate
+from charmhelpers.contrib.network.ovs import ovsdb as ch_ovsdb
 from charmhelpers.fetch import apt_install
-
 
 from charmhelpers.core.hookenv import (
     log, WARNING, INFO, DEBUG
@@ -592,3 +593,76 @@ def ovs_appctl(target, args):
     cmd = ['ovs-appctl', '-t', target]
     cmd.extend(args)
     return subprocess.check_output(cmd, universal_newlines=True)
+
+
+def uuid_for_port(port_name):
+    """Get UUID of named port.
+
+    :param port_name: Name of port.
+    :type port_name: str
+    :returns: Port UUID.
+    :rtype: Optional[uuid.UUID]
+    """
+    for port in ch_ovsdb.SimpleOVSDB(
+            'ovs-vsctl').port.find('name={}'.format(port_name)):
+        return port['_uuid']
+
+
+def bridge_for_port(port_uuid):
+    """Find which bridge a port is on.
+
+    :param port_uuid: UUID of port.
+    :type port_uuid: uuid.UUID
+    :returns: Name of bridge or None.
+    :rtype: Optional[str]
+    """
+    for bridge in ch_ovsdb.SimpleOVSDB(
+            'ovs-vsctl').bridge:
+        # If there is a single port on a bridge the ports property will not be
+        # a list. ref: juju/charm-helpers#510
+        if (isinstance(bridge['ports'], list) and
+                port_uuid in bridge['ports'] or
+                port_uuid == bridge['ports']):
+            return bridge['name']
+
+
+PatchPort = collections.namedtuple('PatchPort', ('bridge', 'port'))
+Patch = collections.namedtuple('Patch', ('this_end', 'other_end'))
+
+
+def patch_ports_on_bridge(bridge):
+    """Find patch ports on a bridge.
+
+    :param bridge: Name of bridge
+    :type bridge: str
+    :returns: Iterator with bridge and port name for both ends of a patch.
+    :rtype: Iterator[Patch[PatchPort[str,str],PatchPort[str,str]]]
+    :raises: ValueError
+    """
+    # On any given vSwitch there will be a small number of patch ports, so we
+    # start by iterating over ports with type `patch` then look up which bridge
+    # they belong to and act on any ports that match the criteria.
+    for interface in ch_ovsdb.SimpleOVSDB(
+            'ovs-vsctl').interface.find('type=patch'):
+        for port in ch_ovsdb.SimpleOVSDB(
+                'ovs-vsctl').port.find('name={}'.format(interface['name'])):
+            if bridge_for_port(port['_uuid']) == bridge:
+                this_end = PatchPort(bridge, port['name'])
+                other_end = PatchPort(bridge_for_port(
+                    uuid_for_port(
+                        interface['options']['peer'])),
+                    interface['options']['peer'])
+                yield(Patch(this_end, other_end))
+            # We expect one result and it is ok if it turns out to be a port
+            # for a different bridge. However we need a break here to satisfy
+            # the for/else check which is in place to detect interface refering
+            # to non-existent port.
+            break
+        else:
+            raise ValueError('Port for interface named "{}" does unexpectedly '
+                             'not exist.'.format(interface['name']))
+    else:
+        # Allow our caller to handle no patch ports found gracefully, in
+        # reference to PEP479 just doing a return will provide a emtpy iterator
+        # and not None.
+        return
