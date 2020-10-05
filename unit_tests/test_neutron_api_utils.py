@@ -109,7 +109,8 @@ class TestNeutronAPIUtils(CharmTestCase):
         port = nutils.api_port('neutron-server')
         self.assertEqual(port, nutils.API_PORTS['neutron-server'])
 
-    def test_determine_packages(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_packages(self, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         self.get_os_codename_install_source.return_value = 'havana'
         pkg_list = nutils.determine_packages()
@@ -117,7 +118,8 @@ class TestNeutronAPIUtils(CharmTestCase):
         expect.extend(['neutron-server', 'neutron-plugin-ml2'])
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
-    def test_determine_vsp_packages(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_vsp_packages(self, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         self.test_config.set('nuage-packages',
                              'python-nuagenetlib nuage-neutron')
@@ -129,7 +131,8 @@ class TestNeutronAPIUtils(CharmTestCase):
                        'python-nuagenetlib', 'nuage-neutron'])
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
-    def test_determine_packages_kilo(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_packages_kilo(self, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         self.get_os_codename_install_source.return_value = 'kilo'
         pkg_list = nutils.determine_packages()
@@ -139,16 +142,57 @@ class TestNeutronAPIUtils(CharmTestCase):
         expect.extend(nutils.KILO_PACKAGES)
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
-    def test_determine_packages_noplugin(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_packages_train(self, mock_manage_plugin):
+        self.os_release.return_value = 'train'
+        self.get_os_codename_install_source.return_value = 'train'
+        pkg_list = nutils.determine_packages()
+        expect = deepcopy(nutils.BASE_PACKAGES)
+        expect.extend([
+            'memcached',
+            'neutron-server',
+            'neutron-plugin-ml2',
+            'python-networking-hyperv'
+        ])
+        expect.extend(nutils.KILO_PACKAGES)
+        expect = [p for p in expect if not p.startswith('python-')]
+        expect.extend(nutils.PY3_PACKAGES)
+        expect.remove('python3-neutron-lbaas')
+        self.assertEqual(sorted(pkg_list), sorted(expect))
+
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_packages_train_by_explicit_release(
+            self, mock_manage_plugin):
+        self.os_release.return_value = 'train'
+        self.get_os_codename_install_source.return_value = 'train'
+        pkg_list = nutils.determine_packages(openstack_release='train')
+        expect = deepcopy(nutils.BASE_PACKAGES)
+        expect.extend([
+            'memcached',
+            'neutron-server',
+            'neutron-plugin-ml2',
+            'python-networking-hyperv'
+        ])
+        expect.extend(nutils.KILO_PACKAGES)
+        expect = [p for p in expect if not p.startswith('python-')]
+        expect.extend(nutils.PY3_PACKAGES)
+        expect.remove('python3-neutron-lbaas')
+        self.assertEqual(sorted(pkg_list), sorted(expect))
+
+    @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils.neutron_api_context, 'NeutronApiSDNContext')
+    def test_determine_packages_noplugin(self, _NeutronApiSDNContext,
+                                         mock_manage_plugin):
         self.os_release.return_value = 'havana'
         self.get_os_codename_install_source.return_value = 'havana'
-        self.test_config.set('manage-neutron-plugin-legacy-mode', False)
+        mock_manage_plugin.return_value = False
         pkg_list = nutils.determine_packages()
         expect = deepcopy(nutils.BASE_PACKAGES)
         expect.extend(['neutron-server'])
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
-    def test_determine_ports(self):
+    @patch.object(nutils, 'manage_plugin')
+    def test_determine_ports(self, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         port_list = nutils.determine_ports()
         self.assertEqual(port_list, [9696])
@@ -203,9 +247,13 @@ class TestNeutronAPIUtils(CharmTestCase):
         [self.assertIn(q_conf, _map.keys()) for q_conf in confs]
         self.assertTrue(nutils.APACHE_CONF not in _map.keys())
 
+    @patch.object(nutils.neutron_api_context, 'NeutronApiSDNContext')
     @patch.object(nutils, 'manage_plugin')
     @patch('os.path.exists')
-    def test_resource_map_noplugin(self, _path_exists, _manage_plugin):
+    def test_resource_map_noplugin(self,
+                                   _path_exists,
+                                   _manage_plugin,
+                                   _NeutronApiSDNContext):
         self.os_release.return_value = 'havana'
         _path_exists.return_value = True
         _manage_plugin.return_value = False
@@ -213,15 +261,16 @@ class TestNeutronAPIUtils(CharmTestCase):
         found_sdn_ctxt = False
         found_sdnconfig_ctxt = False
         for ctxt in _map[nutils.NEUTRON_CONF]['contexts']:
-            if isinstance(ctxt, ncontext.NeutronApiSDNContext):
+            if isinstance(ctxt, MagicMock):
                 found_sdn_ctxt = True
         for ctxt in _map[nutils.NEUTRON_DEFAULT]['contexts']:
             if isinstance(ctxt, ncontext.NeutronApiSDNConfigFileContext):
                 found_sdnconfig_ctxt = True
         self.assertTrue(found_sdn_ctxt and found_sdnconfig_ctxt)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch('os.path.exists')
-    def test_restart_map(self, mock_path_exists):
+    def test_restart_map(self, mock_path_exists, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         mock_path_exists.return_value = False
         _restart_map = nutils.restart_map()
@@ -232,13 +281,16 @@ class TestNeutronAPIUtils(CharmTestCase):
             (nutils.API_PASTE_INI, ['neutron-server']),
             (nutils.APACHE_CONF, ['apache2']),
             (nutils.HAPROXY_CONF, ['haproxy']),
+            (nutils.APACHE_PORTS_CONF, ['apache2']),
             (ML2CONF, ['neutron-server']),
         ])
         self.assertEqual(_restart_map, expect)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(nutils.os.path, 'isdir')
     @patch.object(nutils.os.path, 'exists')
-    def test_restart_map_ssl(self, mock_path_exists, mock_path_isdir):
+    def test_restart_map_ssl(self, mock_path_exists, mock_path_isdir,
+                             mock_manage_plugin):
         self.os_release.return_value = 'havana'
         mock_path_exists.return_value = False
         mock_path_isdir.return_value = True
@@ -250,14 +302,16 @@ class TestNeutronAPIUtils(CharmTestCase):
             (nutils.API_PASTE_INI, ['neutron-server']),
             (nutils.APACHE_CONF, ['apache2']),
             (nutils.HAPROXY_CONF, ['haproxy']),
+            (nutils.APACHE_PORTS_CONF, ['apache2']),
             (ML2CONF, ['neutron-server']),
             ('{}/*'.format(nutils.APACHE_SSL_DIR),
              ['apache2', 'neutron-server']),
         ])
         self.assertEqual(_restart_map, expect)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch('os.path.exists')
-    def test_register_configs(self, mock_path_exists):
+    def test_register_configs(self, mock_path_exists, mock_manage_plugin):
         self.os_release.return_value = 'havana'
         mock_path_exists.return_value = False
 
@@ -276,6 +330,7 @@ class TestNeutronAPIUtils(CharmTestCase):
                  '/etc/neutron/api-paste.ini',
                  '/etc/default/neutron-server',
                  '/etc/neutron/plugins/ml2/ml2_conf.ini',
+                 '/etc/apache2/ports.conf',
                  '/etc/apache2/sites-available/openstack_https_frontend',
                  '/etc/haproxy/haproxy.cfg']
         self.assertEqual(sorted(_regconfs.configs), sorted(confs))
@@ -293,13 +348,14 @@ class TestNeutronAPIUtils(CharmTestCase):
             nutils.keystone_ca_cert_b64()
             self.assertTrue(self.b64encode.called)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
     @patch.object(nutils, 'migrate_neutron_database')
     @patch.object(nutils, 'stamp_neutron_database')
     def test_do_openstack_upgrade(self,
                                   stamp_neutron_db, migrate_neutron_db,
-                                  gsrc):
+                                  gsrc, mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'icehouse'
         self.config.side_effect = self.test_config.get
@@ -331,13 +387,14 @@ class TestNeutronAPIUtils(CharmTestCase):
         calls = [call(upgrade=True)]
         migrate_neutron_db.assert_has_calls(calls)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
     @patch.object(nutils, 'migrate_neutron_database')
     @patch.object(nutils, 'stamp_neutron_database')
     def test_do_openstack_upgrade_liberty(self,
                                           stamp_neutron_db, migrate_neutron_db,
-                                          gsrc):
+                                          gsrc, mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'liberty'
         self.config.side_effect = self.test_config.get
@@ -348,6 +405,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         nutils.do_openstack_upgrade(configs)
         self.assertFalse(stamp_neutron_db.called)
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
@@ -357,7 +415,8 @@ class TestNeutronAPIUtils(CharmTestCase):
                                         stamp_neutron_db,
                                         migrate_neutron_db,
                                         gsrc,
-                                        fwaas_migrate_v1_to_v2):
+                                        fwaas_migrate_v1_to_v2,
+                                        mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'rocky'
         self.config.side_effect = self.test_config.get
@@ -374,6 +433,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         fwaas_migrate_v1_to_v2.assert_not_called()
         configs.write_all.assert_called_once_with()
 
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
@@ -383,7 +443,8 @@ class TestNeutronAPIUtils(CharmTestCase):
                                         stamp_neutron_db,
                                         migrate_neutron_db,
                                         gsrc,
-                                        fwaas_migrate_v1_to_v2):
+                                        fwaas_migrate_v1_to_v2,
+                                        mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'stein'
         self.config.side_effect = self.test_config.get
@@ -400,6 +461,36 @@ class TestNeutronAPIUtils(CharmTestCase):
         fwaas_migrate_v1_to_v2.assert_called_once_with()
         configs.write_all.assert_called_once_with()
 
+    @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
+    @patch.object(charmhelpers.contrib.openstack.utils,
+                  'get_os_codename_install_source')
+    @patch.object(nutils, 'migrate_neutron_database')
+    @patch.object(nutils, 'stamp_neutron_database')
+    def test_do_openstack_upgrade_train(self,
+                                        stamp_neutron_db,
+                                        migrate_neutron_db,
+                                        gsrc,
+                                        fwaas_migrate_v1_to_v2,
+                                        mock_manage_plugin):
+        self.is_elected_leader.return_value = True
+        self.os_release.return_value = 'train'
+        self.config.side_effect = self.test_config.get
+        self.test_config.set('openstack-origin', 'cloud:bionic-train')
+        gsrc.return_value = 'train'
+        self.get_os_codename_install_source.return_value = 'train'
+        self.filter_missing_packages.return_value = ['python-neutron']
+        configs = MagicMock()
+        nutils.do_openstack_upgrade(configs)
+        self.apt_purge.assert_called_with(['python-neutron'], fatal=True)
+        self.apt_autoremove.assert_called_with(purge=True, fatal=True)
+        self.filter_missing_packages.assert_called_with(
+            nutils.PURGE_PACKAGES + nutils.PURGE_EXTRA_PACKAGES_ON_TRAIN)
+        self.assertFalse(stamp_neutron_db.called)
+        fwaas_migrate_v1_to_v2.assert_called_once_with()
+        configs.write_all.assert_called_once_with()
+
+    @patch.object(nutils, 'manage_plugin')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
     @patch.object(nutils, 'migrate_neutron_database')
@@ -407,7 +498,8 @@ class TestNeutronAPIUtils(CharmTestCase):
     def test_do_openstack_upgrade_notleader(self,
                                             stamp_neutron_db,
                                             migrate_neutron_db,
-                                            gsrc):
+                                            gsrc,
+                                            mock_manage_plugin):
         self.is_elected_leader.return_value = False
         self.os_release.return_value = 'icehouse'
         self.config.side_effect = self.test_config.get
@@ -563,31 +655,37 @@ class TestNeutronAPIUtils(CharmTestCase):
                'icehouse']
         self.subprocess.check_output.assert_called_with(cmd)
 
+    @patch.object(nutils, 'relation_ids')
     @patch.object(nutils, 'relation_set')
-    @patch.object(nutils, 'is_db_initialised', lambda: False)
     @patch.object(nutils, 'relation_get')
+    @patch.object(nutils, 'is_leader')
+    @patch.object(nutils, 'is_db_initialised')
     @patch.object(nutils, 'local_unit', lambda *args: 'unit/0')
-    def test_check_local_db_actions_complete_by_self(self, mock_relation_get,
-                                                     mock_relation_set):
-        mock_relation_get.return_value = {}
+    def test_check_local_db_actions_complete_leader(self,
+                                                    mock_is_db_initialised,
+                                                    mock_is_leader,
+                                                    mock_relation_get,
+                                                    mock_relation_set,
+                                                    mock_relation_ids):
+        mock_is_leader.return_value = True
         nutils.check_local_db_actions_complete()
-        self.assertFalse(mock_relation_set.called)
-
-        mock_relation_get.return_value = {nutils.NEUTRON_DB_INIT_RKEY:
-                                          'unit/0-1234'}
-        nutils.check_local_db_actions_complete()
-        self.assertFalse(mock_relation_set.called)
+        mock_relation_get.assert_not_called()
+        mock_relation_set.assert_not_called()
+        self.service_restart.assert_not_called()
 
     @patch.object(nutils, 'relation_ids')
     @patch.object(nutils, 'relation_set')
     @patch.object(nutils, 'relation_get')
+    @patch.object(nutils, 'is_leader')
     @patch.object(nutils, 'is_db_initialised')
     @patch.object(nutils, 'local_unit', lambda *args: 'unit/0')
-    def test_check_local_db_actions_complete(self,
-                                             mock_is_db_initialised,
-                                             mock_relation_get,
-                                             mock_relation_set,
-                                             mock_relation_ids):
+    def test_check_local_db_actions_complete_non_leader(self,
+                                                        mock_is_db_initialised,
+                                                        mock_is_leader,
+                                                        mock_relation_get,
+                                                        mock_relation_set,
+                                                        mock_relation_ids):
+        mock_is_leader.return_value = False
         shared_db_rel_id = 'shared-db:1'
         mock_relation_ids.return_value = [shared_db_rel_id]
         mock_is_db_initialised.return_value = True
@@ -605,7 +703,8 @@ class TestNeutronAPIUtils(CharmTestCase):
         init_db_val = 'unit/1-{}-1234'.format(shared_db_rel_id)
         r_settings = {nutils.NEUTRON_DB_INIT_RKEY: init_db_val}
         nutils.check_local_db_actions_complete()
-        calls = [call(**{nutils.NEUTRON_DB_INIT_ECHO_RKEY: init_db_val})]
+        calls = [call(**{nutils.NEUTRON_DB_INIT_ECHO_RKEY: init_db_val,
+                         nutils.NEUTRON_DB_INIT_RKEY: None})]
         mock_relation_set.assert_has_calls(calls)
         self.service_restart.assert_called_with('neutron-server')
 
@@ -685,15 +784,46 @@ class TestNeutronAPIUtils(CharmTestCase):
                'head']
         self.subprocess.check_output.assert_called_with(cmd)
 
-    def test_manage_plugin_true(self):
-        self.test_config.set('manage-neutron-plugin-legacy-mode', True)
-        manage = nutils.manage_plugin()
-        self.assertTrue(manage)
+    @patch.object(nutils, 'kv')
+    @patch.object(nutils, 'get_os_codename_install_source')
+    def test_maybe_set_os_install_release(
+            self, mock_get_os_codename_install_source, mock_kv):
+        mock_get_os_codename_install_source.return_value = 'ussuri'
+        db = MagicMock()
+        mock_kv.return_value = db
+        nutils.maybe_set_os_install_release('fake:source')
+        db.set.assert_called_once_with(
+            nutils.NEUTRON_OS_INSTALL_RELEASE_KEY, 'ussuri')
+        db.flush.assert_called_once_with()
+        db.reset_mock()
+        mock_get_os_codename_install_source.return_value = 'train'
+        nutils.maybe_set_os_install_release('fake:source')
+        self.assertFalse(db.set.called)
+        nutils.maybe_set_os_install_release('fake:source', min_release='train')
+        db.set.assert_called_once_with(
+            nutils.NEUTRON_OS_INSTALL_RELEASE_KEY, 'train')
+        db.flush.assert_called_once_with()
 
-    def test_manage_plugin_false(self):
+    @patch.object(nutils, 'kv')
+    def test_get_os_install_release(self, mock_kv):
+        db = MagicMock()
+        mock_kv.return_value = db
+        nutils.get_os_install_release()
+        db.get.assert_called_once_with(
+            nutils.NEUTRON_OS_INSTALL_RELEASE_KEY, '')
+
+    @patch.object(nutils, 'get_os_install_release')
+    def test_manage_plugin(self, mock_get_os_install_release):
+        mock_get_os_install_release.return_value = ''
+        self.assertTrue(nutils.manage_plugin())
+        mock_get_os_install_release.return_value = 'ussuri'
+        self.assertFalse(nutils.manage_plugin())
+        self.test_config.set('manage-neutron-plugin-legacy-mode', True)
+        self.assertTrue(nutils.manage_plugin())
         self.test_config.set('manage-neutron-plugin-legacy-mode', False)
-        manage = nutils.manage_plugin()
-        self.assertFalse(manage)
+        self.assertFalse(nutils.manage_plugin())
+        mock_get_os_install_release.return_value = ''
+        self.assertFalse(nutils.manage_plugin())
 
     def test_additional_install_locations_calico(self):
         self.get_os_codename_install_source.return_value = 'icehouse'
@@ -752,6 +882,7 @@ class TestNeutronAPIUtils(CharmTestCase):
                 nutils.VERSION_PACKAGE
             )
 
+    @patch.object(nutils, 'get_managed_services_and_ports')
     @patch.object(nutils, 'get_optional_interfaces')
     @patch.object(nutils, 'REQUIRED_INTERFACES')
     @patch.object(nutils, 'services')
@@ -762,8 +893,10 @@ class TestNeutronAPIUtils(CharmTestCase):
                                 determine_ports,
                                 services,
                                 REQUIRED_INTERFACES,
-                                get_optional_interfaces):
-        services.return_value = 's1'
+                                get_optional_interfaces,
+                                get_managed_services_and_ports):
+        get_managed_services_and_ports.return_value = (['s1'], [])
+        services.return_value = ['s1']
         REQUIRED_INTERFACES.copy.return_value = {'int': ['test 1']}
         get_optional_interfaces.return_value = {'opt': ['test 2']}
         determine_ports.return_value = 'p1'
@@ -773,7 +906,7 @@ class TestNeutronAPIUtils(CharmTestCase):
             'test-config',
             {'int': ['test 1'], 'opt': ['test 2']},
             charm_func=nutils.check_optional_relations,
-            services='s1', ports=None)
+            services=['s1'], ports=None)
 
     def test_pause_unit_helper(self):
         with patch.object(nutils, '_pause_resume_helper') as prh:
@@ -783,9 +916,12 @@ class TestNeutronAPIUtils(CharmTestCase):
             nutils.resume_unit_helper('random-config')
             prh.assert_called_once_with(nutils.resume_unit, 'random-config')
 
+    @patch.object(nutils, 'get_managed_services_and_ports')
     @patch.object(nutils, 'services')
     @patch.object(nutils, 'determine_ports')
-    def test_pause_resume_helper(self, determine_ports, services):
+    def test_pause_resume_helper(self, determine_ports, services,
+                                 get_managed_services_and_ports):
+        get_managed_services_and_ports.return_value = (['s1'], [])
         f = MagicMock()
         services.return_value = 's1'
         determine_ports.return_value = 'p1'
@@ -794,7 +930,7 @@ class TestNeutronAPIUtils(CharmTestCase):
             nutils._pause_resume_helper(f, 'some-config')
             asf.assert_called_once_with('some-config')
             # ports=None whilst port checks are disabled.
-            f.assert_called_once_with('assessor', services='s1', ports=None)
+            f.assert_called_once_with('assessor', services=['s1'], ports=None)
 
     @patch.object(nutils, 'subprocess')
     @patch.object(nutils, 'get_db_url')
@@ -849,3 +985,48 @@ class TestNeutronAPIUtils(CharmTestCase):
             "pymysql+mysql://testuser:testpassword@testhost/testdatabase"
             "?ssl_ca=foo&ssl_cert=bar&ssl_key=baz"
         )
+
+    @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils, 'relation_ids')
+    def test_get_optional_interfaces(self, mock_relation_ids,
+                                     mock_manage_plugin):
+        mock_relation_ids.return_value = False
+        mock_manage_plugin.return_value = True
+        self.assertDictEqual(nutils.get_optional_interfaces(), {})
+        mock_relation_ids.assert_called_once_with('ha')
+        mock_manage_plugin.assert_called_once_with()
+        mock_relation_ids.return_value = True
+        mock_manage_plugin.return_value = False
+        self.assertDictEqual(nutils.get_optional_interfaces(), {
+            'ha': ['cluster'],
+            'neutron-plugin': [
+                'neutron-plugin-api',
+                'neutron-plugin-api-subordinate',
+            ],
+        })
+
+    @patch.object(nutils, 'config')
+    @patch.object(nutils, 'relation_ids')
+    @patch.object(nutils, 'log')
+    def test_check_optional_relations_invalid_ipv4(self,
+                                                   log,
+                                                   relation_ids,
+                                                   config):
+        relation_ids.return_value = True
+        config.side_effect = [True, True, 23]
+        self.assertEqual(
+            nutils.check_optional_relations(None),
+            ('blocked', 'Invalid configuration: ipv4-ptr-zone-prefix-size'))
+
+    @patch.object(nutils, 'config')
+    @patch.object(nutils, 'relation_ids')
+    @patch.object(nutils, 'log')
+    def test_check_optional_relations_invalid_ipv6(self,
+                                                   log,
+                                                   relation_ids,
+                                                   config):
+        relation_ids.return_value = True
+        config.side_effect = [True, True, 24, 63]
+        self.assertEqual(
+            nutils.check_optional_relations(None),
+            ('blocked', 'Invalid configuration: ipv6-ptr-zone-prefix-size'))

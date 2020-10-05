@@ -193,7 +193,7 @@ def service_pause(service_name, init_dir="/etc/init", initd_dir="/etc/init.d",
         stopped = service_stop(service_name, **kwargs)
     upstart_file = os.path.join(init_dir, "{}.conf".format(service_name))
     sysv_file = os.path.join(initd_dir, service_name)
-    if init_is_systemd():
+    if init_is_systemd(service_name=service_name):
         service('disable', service_name)
         service('mask', service_name)
     elif os.path.exists(upstart_file):
@@ -227,7 +227,7 @@ def service_resume(service_name, init_dir="/etc/init",
     """
     upstart_file = os.path.join(init_dir, "{}.conf".format(service_name))
     sysv_file = os.path.join(initd_dir, service_name)
-    if init_is_systemd():
+    if init_is_systemd(service_name=service_name):
         service('unmask', service_name)
         service('enable', service_name)
     elif os.path.exists(upstart_file):
@@ -257,7 +257,7 @@ def service(action, service_name, **kwargs):
     :param **kwargs: additional params to be passed to the service command in
                     the form of key=value.
     """
-    if init_is_systemd():
+    if init_is_systemd(service_name=service_name):
         cmd = ['systemctl', action, service_name]
     else:
         cmd = ['service', service_name, action]
@@ -281,7 +281,7 @@ def service_running(service_name, **kwargs):
                      units (e.g. service ceph-osd status id=2). The kwargs
                      are ignored in systemd services.
     """
-    if init_is_systemd():
+    if init_is_systemd(service_name=service_name):
         return service('is-active', service_name)
     else:
         if os.path.exists(_UPSTART_CONF.format(service_name)):
@@ -311,8 +311,14 @@ def service_running(service_name, **kwargs):
 SYSTEMD_SYSTEM = '/run/systemd/system'
 
 
-def init_is_systemd():
-    """Return True if the host system uses systemd, False otherwise."""
+def init_is_systemd(service_name=None):
+    """
+    Returns whether the host uses systemd for the specified service.
+
+    @param Optional[str] service_name: specific name of service
+    """
+    if str(service_name).startswith("snap."):
+        return True
     if lsb_release()['DISTRIB_CODENAME'] == 'trusty':
         return False
     return os.path.isdir(SYSTEMD_SYSTEM)
@@ -1075,3 +1081,30 @@ def install_ca_cert(ca_cert, name=None):
     log("Installing new CA cert at: {}".format(cert_file), level=INFO)
     write_file(cert_file, ca_cert)
     subprocess.check_call(['update-ca-certificates', '--fresh'])
+
+
+def get_system_env(key, default=None):
+    """Get data from system environment as represented in ``/etc/environment``.
+
+    :param key: Key to look up
+    :type key: str
+    :param default: Value to return if key is not found
+    :type default: any
+    :returns: Value for key if found or contents of default parameter
+    :rtype: any
+    :raises: subprocess.CalledProcessError
+    """
+    env_file = '/etc/environment'
+    # use the shell and env(1) to parse the global environments file.  This is
+    # done to get the correct result even if the user has shell variable
+    # substitutions or other shell logic in that file.
+    output = subprocess.check_output(
+        ['env', '-i', '/bin/bash', '-c',
+         'set -a && source {} && env'.format(env_file)],
+        universal_newlines=True)
+    for k, v in (line.split('=', 1)
+                 for line in output.splitlines() if '=' in line):
+        if k == key:
+            return v
+    else:
+        return default

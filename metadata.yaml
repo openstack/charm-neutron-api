@@ -13,17 +13,18 @@ description: |
   .
   This charm provides the OpenStack Neutron API service.
 tags:
-  - openstack
+- openstack
 extra-bindings:
   public:
   admin:
   internal:
 series:
-  - xenial
-  - bionic
-  - cosmic
-  - disco
-  - trusty
+- xenial
+- bionic
+- eoan
+- focal
+- trusty
+- groovy
 provides:
   nrpe-external-master:
     interface: nrpe-external-master
@@ -63,3 +64,8 @@ requires:
 peers:
   cluster:
     interface: neutron-api-ha
+resources:
+  policyd-override:
+    type: file
+    filename: policyd-override.zip
+    description: The policy.d overrides file

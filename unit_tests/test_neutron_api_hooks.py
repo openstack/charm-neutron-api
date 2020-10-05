@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import sys
 
 from mock import MagicMock, patch, call
@@ -89,10 +90,14 @@ TO_PATCH = [
     'generate_ha_relation_data',
     'is_nsg_logging_enabled',
     'is_nfg_logging_enabled',
+    'is_port_forwarding_enabled',
     'remove_old_packages',
     'services',
     'service_restart',
     'is_db_initialised',
+    'maybe_do_policyd_overrides',
+    'maybe_do_policyd_overrides_on_config_changed',
+    'is_db_maintenance_mode',
 ]
 NEUTRON_CONF_DIR = "/etc/neutron"
 
@@ -138,6 +143,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         self.neutron_plugin_attribute.side_effect = _mock_nuage_npa
         self.is_nsg_logging_enabled.return_value = False
         self.is_nfg_logging_enabled.return_value = False
+        self.is_port_forwarding_enabled.return_value = False
 
     def _fake_relids(self, rel_name):
         return [randrange(100) for _count in range(2)]
@@ -146,7 +152,8 @@ class NeutronAPIHooksTests(CharmTestCase):
         hooks.hooks.execute([
             'hooks/{}'.format(hookname)])
 
-    def test_install_hook(self):
+    @patch.object(hooks, 'maybe_set_os_install_release')
+    def test_install_hook(self, mock_maybe_set_os_install_release):
         _pkgs = ['foo', 'bar']
         _ports = [80, 81, 82]
         _port_calls = [call(port) for port in _ports]
@@ -156,6 +163,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         self.configure_installation_source.assert_called_with(
             'distro'
         )
+        mock_maybe_set_os_install_release.assert_called_once_with('distro')
         self.apt_update.assert_called_with(fatal=True)
         self.apt_install.assert_has_calls([
             call(_pkgs, fatal=True),
@@ -198,6 +206,8 @@ class NeutronAPIHooksTests(CharmTestCase):
         _id_rel_joined = self.patch('identity_joined')
         _id_cluster_joined = self.patch('cluster_joined')
         _id_ha_joined = self.patch('ha_joined')
+        _n_plugin_api_sub_rel_joined = self.patch(
+            'neutron_plugin_api_subordinate_relation_joined')
         self._call_hook('config-changed')
         self.assertTrue(_n_api_rel_joined.called)
         self.assertTrue(_n_plugin_api_rel_joined.called)
@@ -208,6 +218,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         self.assertTrue(self.CONFIGS.write_all.called)
         self.assertTrue(self.do_openstack_upgrade.called)
         self.assertTrue(self.apt_install.called)
+        _n_plugin_api_sub_rel_joined.assert_called()
 
     def test_config_changed_nodvr_disprouters(self):
         self.neutron_ready.return_value = True
@@ -285,6 +296,7 @@ class NeutronAPIHooksTests(CharmTestCase):
     @patch.object(hooks, 'neutron_plugin_api_subordinate_relation_joined')
     @patch.object(hooks, 'conditional_neutron_migration')
     def test_shared_db_changed(self, cond_neutron_mig, plugin_joined):
+        self.is_db_maintenance_mode.return_value = False
         self.CONFIGS.complete_contexts.return_value = ['shared-db']
         self.relation_ids.return_value = ['neutron-plugin-api-subordinate:1']
         self._call_hook('shared-db-relation-changed')
@@ -295,6 +307,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             relid='neutron-plugin-api-subordinate:1')
 
     def test_shared_db_changed_partial_ctxt(self):
+        self.is_db_maintenance_mode.return_value = False
         self.CONFIGS.complete_contexts.return_value = []
         self._call_hook('shared-db-relation-changed')
         self.assertFalse(self.CONFIGS.write_all.called)
@@ -373,8 +386,9 @@ class NeutronAPIHooksTests(CharmTestCase):
         self._call_hook('identity-service-relation-changed')
         self.assertFalse(_api_rel_joined.called)
 
+    @patch.object(hooks, 'manage_plugin')
     @patch.object(hooks, 'configure_https')
-    def test_identity_changed(self, conf_https):
+    def test_identity_changed(self, conf_https, mock_manage_plugin):
         self.CONFIGS.complete_contexts.return_value = ['identity-service']
         _api_rel_joined = self.patch('neutron_api_relation_joined')
         self.relation_ids.side_effect = self._fake_relids
@@ -394,6 +408,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         neutron_url = '%s:%s' % (host, port)
         _relation_data = {
             'enable-sriov': False,
+            'enable-hardware-offload': False,
             'neutron-plugin': 'ovs',
             'neutron-url': neutron_url,
             'neutron-security-groups': 'no',
@@ -426,6 +441,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         neutron_url = '%s:%s' % (host, port)
         _relation_data = {
             'enable-sriov': False,
+            'enable-hardware-offload': False,
             'neutron-plugin': 'ovs',
             'neutron-url': neutron_url,
             'neutron-security-groups': 'no',
@@ -525,6 +541,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
+            'enable-port-forwarding': False,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -570,6 +587,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': True,
             'enable-nfg-logging': False,
+            'enable-port-forwarding': False,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -621,6 +639,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
             'enable-nfg-logging': True,
+            'enable-port-forwarding': False,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -635,6 +654,57 @@ class NeutronAPIHooksTests(CharmTestCase):
 
         self.test_config.set('enable-firewall-group-logging', True)
         self.is_nfg_logging_enabled.return_value = True
+
+        self._call_hook('neutron-plugin-api-relation-joined')
+
+        self.relation_set.assert_called_with(
+            relation_id=None,
+            **_relation_data)
+
+    def test_neutron_plugin_api_relation_joined_port_forwarding(self):
+        self.unit_get.return_value = '172.18.18.18'
+        self.IdentityServiceContext.return_value = \
+            DummyContext(return_value={})
+        _relation_data = {
+            'neutron-security-groups': False,
+            'enable-dvr': False,
+            'enable-l3ha': False,
+            'enable-qos': False,
+            'enable-vlan-trunking': False,
+            'addr': '172.18.18.18',
+            'polling-interval': 2,
+            'rpc-response-timeout': 60,
+            'report-interval': 30,
+            'l2-population': False,
+            'overlay-network-type': 'vxlan',
+            'service_protocol': None,
+            'auth_protocol': None,
+            'service_tenant': None,
+            'service_port': None,
+            'region': 'RegionOne',
+            'service_password': None,
+            'auth_port': None,
+            'auth_host': None,
+            'service_username': None,
+            'service_host': None,
+            'neutron-api-ready': 'no',
+            'enable-nsg-logging': False,
+            'enable-nfg-logging': False,
+            'enable-port-forwarding': True,
+            'global-physnet-mtu': 1500,
+            'physical-network-mtus': None,
+        }
+
+        self.is_qos_requested_and_valid.return_value = False
+        self.is_vlan_trunking_requested_and_valid.return_value = False
+        self.get_dvr.return_value = False
+        self.get_l3ha.return_value = False
+        self.get_l2population.return_value = False
+        self.get_overlay_network_type.return_value = 'vxlan'
+        self.get_dns_domain.return_value = ''
+
+        self.test_config.set('enable-port-forwarding', True)
+        self.is_port_forwarding_enabled.return_value = True
 
         self._call_hook('neutron-plugin-api-relation-joined')
 
@@ -671,6 +741,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
+            'enable-port-forwarding': False,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -716,6 +787,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
+            'enable-port-forwarding': False,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -763,6 +835,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'neutron-api-ready': 'no',
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
+            'enable-port-forwarding': False,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -809,6 +882,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'dns-domain': 'openstack.example.',
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
+            'enable-port-forwarding': False,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -934,3 +1008,55 @@ class NeutronAPIHooksTests(CharmTestCase):
     def test_infoblox_peer_departed(self):
         self._call_hook('infoblox-neutron-relation-departed')
         self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+
+    @patch.object(hooks, 'NeutronApiSDNContext')
+    @patch.object(hooks, 'NeutronCCContext')
+    @patch.object(hooks, 'manage_plugin')
+    def test_neutron_plugin_api_subordinate_relation(
+            self, _manage_plugin, _NeutronCCContext, _NeutronApiSDNContext):
+        _manage_plugin.return_value = True
+        self._call_hook('neutron-plugin-api-subordinate-relation-joined')
+        self.relation_set.assert_called_once_with(
+            **{'neutron-api-ready': 'no'}, relation_id=None)
+        self.CONFIGS.write_all.assert_called_once_with()
+        self.relation_set.reset_mock()
+        self.CONFIGS.reset_mock()
+        _manage_plugin.return_value = False
+        ncc_instance = _NeutronCCContext.return_value
+        ncc_instance.return_value = {'core_plugin': 'aPlugin'}
+        napisdn_instance = _NeutronApiSDNContext.return_value
+        napisdn_instance.is_allowed.return_value = True
+        self._call_hook('neutron-plugin-api-subordinate-relation-changed')
+        self.relation_set.assert_called_once_with(
+            **{'neutron-api-ready': 'no',
+               'neutron_config_data': json.dumps({'core_plugin': 'aPlugin'})},
+            relation_id=None)
+        self.CONFIGS.write_all.assert_called_once_with()
+
+    @patch.object(hooks, 'manage_plugin')
+    @patch.object(hooks, 'is_api_ready')
+    @patch.object(hooks, 'leader_set')
+    @patch.object(hooks, 'migrate_neutron_database')
+    @patch.object(hooks, 'leader_get')
+    @patch.object(hooks, 'relation_id')
+    @patch.object(hooks, 'is_db_initialised')
+    def test_neutron_plugin_api_subordinate_relation_db_migration(
+            self, _is_db_initialised, _relation_id, _leader_get,
+            _migrate_neutron_database, _leader_set, _is_api_ready,
+            _manage_plugin):
+        _is_db_initialised.return_value = True
+        _relation_id.return_value = 'neutron-plugin-api-subordinate:42'
+        self.related_units.return_value = ['aUnit']
+        self.is_leader.return_value = True
+        self.relation_get.side_effect = None
+        self.relation_get.return_value = 'fake-uuid'
+        _leader_get.return_value = (
+            'migrate-database-nonce-neutron-plugin-api-subordinate:42')
+        _is_api_ready.return_value = True
+        _manage_plugin.return_value = True
+        self._call_hook('neutron-plugin-api-subordinate-relation-changed')
+        _migrate_neutron_database.assert_called_once_with(upgrade=True)
+        self.relation_set.assert_called_once_with(
+            relation_id='neutron-plugin-api-subordinate:42',
+            **{'migrate-database-nonce': 'fake-uuid',
+               'neutron-api-ready': 'yes'})

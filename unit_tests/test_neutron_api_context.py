@@ -261,6 +261,17 @@ class GeneralTests(CharmTestCase):
         self.test_config.set('enable-firewall-group-logging', True)
         self.assertFalse(context.is_nfg_logging_enabled())
 
+    def test_is_port_forwarding_enabled(self):
+        self.os_release.return_value = 'rocky'
+        self.test_config.set('enable-port-forwarding', True)
+        self.assertTrue(context.is_port_forwarding_enabled())
+        self.os_release.return_value = 'rocky'
+        self.test_config.set('enable-port-forwarding', False)
+        self.assertFalse(context.is_port_forwarding_enabled())
+        self.os_release.return_value = 'queens'
+        self.test_config.set('enable-port-forwarding', True)
+        self.assertFalse(context.is_port_forwarding_enabled())
+
 
 class IdentityServiceContext(CharmTestCase):
 
@@ -417,6 +428,9 @@ class NeutronCCContextTest(CharmTestCase):
         self.test_config.set('mem-password', 'heslo')
         self.test_config.set('enable-ml2-port-security', True)
         self.test_config.set('dhcp-agents-per-network', 3)
+        # Although set as True for all tests, only Ussuri templates
+        # can apply this option.
+        self.test_config.set('enable-igmp-snooping', True)
 
     def tearDown(self):
         super(NeutronCCContextTest, self).tearDown()
@@ -437,6 +451,7 @@ class NeutronCCContextTest(CharmTestCase):
             'dhcp_agents_per_network': 3,
             'enable_sriov': False,
             'external_network': 'bob',
+            'enable_igmp_snooping': True,
             'neutron_bind_port': self.api_port,
             'verbose': True,
             'l2_population': True,
@@ -486,6 +501,7 @@ class NeutronCCContextTest(CharmTestCase):
             'enable_sriov': False,
             'external_network': 'bob',
             'global_physnet_mtu': 1500,
+            'enable_igmp_snooping': True,
             'neutron_bind_port': self.api_port,
             'verbose': True,
             'l2_population': True,
@@ -591,6 +607,7 @@ class NeutronCCContextTest(CharmTestCase):
             'dhcp_agents_per_network': 3,
             'enable_sriov': False,
             'external_network': 'bob',
+            'enable_igmp_snooping': True,
             'neutron_bind_port': self.api_port,
             'verbose': True,
             'l2_population': True,
@@ -643,6 +660,7 @@ class NeutronCCContextTest(CharmTestCase):
             'l3_ha': True,
             'mechanism_drivers': 'openvswitch',
             'external_network': 'bob',
+            'enable_igmp_snooping': True,
             'neutron_bind_port': self.api_port,
             'verbose': True,
             'l2_population': False,
@@ -714,6 +732,7 @@ class NeutronCCContextTest(CharmTestCase):
             'enable_sriov': True,
             'supported_pci_vendor_devs': '1111:3333,2222:4444',
             'external_network': 'bob',
+            'enable_igmp_snooping': True,
             'neutron_bind_port': self.api_port,
             'verbose': True,
             'l2_population': True,
@@ -1096,30 +1115,35 @@ class NeutronApiSDNContextTest(CharmTestCase):
     @patch.object(charmhelpers.contrib.openstack.context, 'relation_get')
     @patch.object(charmhelpers.contrib.openstack.context, 'related_units')
     @patch.object(charmhelpers.contrib.openstack.context, 'relation_ids')
-    def ctxt_check(self, rel_settings, expect, _rids, _runits, _rget, _log):
+    def ctxt_check(self, rel_settings, expect, _rids, _runits, _rget, _log,
+                   defaults=None, not_defaults=None):
         self.test_relation.set(rel_settings)
         _runits.return_value = ['unit1']
         _rids.return_value = ['rid2']
         _rget.side_effect = self.test_relation.get
         self.relation_ids.return_value = ['rid2']
         self.related_units.return_value = ['unit1']
-        napisdn_ctxt = context.NeutronApiSDNContext()()
+        napisdn_instance = context.NeutronApiSDNContext()
+        napisdn_ctxt = napisdn_instance()
         self.assertEqual(napisdn_ctxt, expect)
+        defaults = defaults or []
+        for templ_key in defaults:
+            self.assertTrue(napisdn_instance.is_default(templ_key))
+        not_defaults = not_defaults or []
+        for templ_key in not_defaults:
+            self.assertFalse(napisdn_instance.is_default(templ_key))
 
     def test_defaults(self):
         self.ctxt_check(
             {'neutron-plugin': 'ovs'},
             {
-                'api_extensions_path': '',
                 'core_plugin': 'neutron.plugins.ml2.plugin.Ml2Plugin',
                 'neutron_plugin_config': ('/etc/neutron/plugins/ml2/'
                                           'ml2_conf.ini'),
-                'service_plugins': 'router,firewall,lbaas,vpnaas,metering',
-                'restart_trigger': '',
-                'quota_driver': '',
                 'neutron_plugin': 'ovs',
                 'sections': {},
-            }
+            },
+            defaults=['core_plugin', 'neutron_plugin_config'],
         )
 
     def test_overrides(self):
@@ -1132,6 +1156,10 @@ class NeutronApiSDNContextTest(CharmTestCase):
                 'service-plugins': 'router,unicorn,rainbows',
                 'restart-trigger': 'restartnow',
                 'quota-driver': 'quotadriver',
+                'extension-drivers': 'dns,port_security',
+                'mechanism-drivers': 'ovn',
+                'tenant-network-types': 'geneve,gre,vlan,flat,local',
+                'neutron-security-groups': 'true',
             },
             {
                 'api_extensions_path': '/usr/local/share/neutron/extensions',
@@ -1141,8 +1169,18 @@ class NeutronApiSDNContextTest(CharmTestCase):
                 'restart_trigger': 'restartnow',
                 'quota_driver': 'quotadriver',
                 'neutron_plugin': 'ovs',
+                'extension_drivers': 'dns,port_security',
+                'mechanism_drivers': 'ovn',
+                'tenant_network_types': 'geneve,gre,vlan,flat,local',
+                'neutron_security_groups': 'true',
                 'sections': {},
-            }
+            },
+            not_defaults=[
+                'api_extensions_path', 'core_plugin', 'neutron_plugin_config',
+                'service_plugins', 'restart_trigger', 'quota_driver',
+                'extension_drivers', 'mechanism_drivers',
+                'tenant_network_types', 'neutron_security_groups',
+            ],
         )
 
     def test_subordinateconfig(self):
@@ -1163,13 +1201,9 @@ class NeutronApiSDNContextTest(CharmTestCase):
                 'subordinate_configuration': json.dumps(principle_config),
             },
             {
-                'api_extensions_path': '',
                 'core_plugin': 'neutron.plugins.ml2.plugin.Ml2Plugin',
                 'neutron_plugin_config': ('/etc/neutron/plugins/ml2/'
                                           'ml2_conf.ini'),
-                'service_plugins': 'router,firewall,lbaas,vpnaas,metering',
-                'restart_trigger': '',
-                'quota_driver': '',
                 'neutron_plugin': 'ovs',
                 'sections': {u'DEFAULT': [[u'neutronboost', True]]},
             }
@@ -1178,8 +1212,13 @@ class NeutronApiSDNContextTest(CharmTestCase):
     def test_empty(self):
         self.ctxt_check(
             {},
-            {'sections': {}},
+            {},
         )
+
+    def test_is_allowed(self):
+        napisdn_instance = context.NeutronApiSDNContext()
+        self.assertTrue(napisdn_instance.is_allowed('core_plugin'))
+        self.assertFalse(napisdn_instance.is_allowed('non_existent_key'))
 
 
 class NeutronApiSDNConfigFileContextTest(CharmTestCase):
@@ -1204,11 +1243,17 @@ class NeutronApiSDNConfigFileContextTest(CharmTestCase):
         })
 
     def test_default(self):
-        self.relation_ids.return_value = []
+        self.relation_ids.return_value = ['rid3']
+        self.related_units.return_value = ['unit2']
         napisdn_ctxt = context.NeutronApiSDNConfigFileContext()()
         self.assertEqual(napisdn_ctxt, {
             'config': '/etc/neutron/plugins/ml2/ml2_conf.ini'
         })
+
+    def test_no_related_unites(self):
+        self.relation_ids.return_value = ['rid4']
+        napisdn_ctxt = context.NeutronApiSDNConfigFileContext()()
+        self.assertEqual(napisdn_ctxt, {})
 
 
 class NeutronApiApiPasteContextTest(CharmTestCase):

@@ -1,5 +1,5 @@
 variables:
-  openstack-origin: &openstack-origin distro
+  openstack-origin: &openstack-origin cloud:bionic-train
 
 series: &series bionic
 
@@ -28,43 +28,6 @@ applications:
     num_units: 1
     options:
       openstack-origin: *openstack-origin
-  glance:
-    charm: cs:glance
-    num_units: 1
-    options:
-      openstack-origin: *openstack-origin
-    to:
-      - '4'
-  neutron-openvswitch:
-    charm: cs:neutron-openvswitch
-  neutron-gateway:
-    charm: cs:neutron-gateway
-    num_units: 1
-    options:
-      bridge-mappings: physnet1:br-ex
-      openstack-origin: *openstack-origin
-    to:
-      - '5'
-  nova-cloud-controller:
-    charm: cs:nova-cloud-controller
-    num_units: 1
-    options:
-      network-manager: Neutron
-      openstack-origin: *openstack-origin
-    to:
-      - '6'
-  nova-compute:
-    charm: cs:nova-compute
-    num_units: 2
-    options:
-      config-flags: default_ephemeral_format=ext4
-      enable-live-migration: true
-      enable-resize: true
-      migration-auth-type: ssh
-      openstack-origin: *openstack-origin
-    to:
-      - '7'
-      - '8'
 relations:
   - - 'neutron-api:shared-db'
     - 'percona-cluster:shared-db'

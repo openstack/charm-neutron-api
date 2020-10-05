@@ -53,6 +53,7 @@ from charmhelpers.core.hookenv import (
     relation_get,
     relation_set,
     local_unit,
+    is_leader,
 )
 
 from charmhelpers.fetch import (
@@ -73,8 +74,11 @@ from charmhelpers.core.host import (
     service_restart,
 )
 
+from charmhelpers.core.unitdata import kv
+
 from charmhelpers.contrib.hahelpers.cluster import (
     get_hacluster_config,
+    get_managed_services_and_ports,
 )
 
 from charmhelpers.contrib.hahelpers.cluster import is_elected_leader
@@ -96,6 +100,7 @@ BASE_PACKAGES = [
     'uuid',
 ]
 
+# TODO: FWaaS was deprecated at Ussuri and will be removed during the W cycle
 KILO_PACKAGES = [
     'python-neutron-lbaas',
     'python-neutron-fwaas',
@@ -124,6 +129,10 @@ PURGE_PACKAGES = [
     'python-psycopg2',
 ]
 
+PURGE_EXTRA_PACKAGES_ON_TRAIN = [
+    'python3-neutron-lbaas',
+]
+
 VERSION_PACKAGE = 'neutron-common'
 
 BASE_SERVICES = [
@@ -139,6 +148,7 @@ NEUTRON_CONF = '%s/neutron.conf' % NEUTRON_CONF_DIR
 NEUTRON_LBAAS_CONF = '%s/neutron_lbaas.conf' % NEUTRON_CONF_DIR
 NEUTRON_VPNAAS_CONF = '%s/neutron_vpnaas.conf' % NEUTRON_CONF_DIR
 HAPROXY_CONF = '/etc/haproxy/haproxy.cfg'
+APACHE_PORTS_CONF = '/etc/apache2/ports.conf'
 APACHE_CONF = '/etc/apache2/sites-available/openstack_https_frontend'
 APACHE_24_CONF = '/etc/apache2/sites-available/openstack_https_frontend.conf'
 APACHE_SSL_DIR = '/etc/apache2/ssl/neutron'
@@ -147,7 +157,7 @@ CA_CERT_PATH = '/usr/local/share/ca-certificates/keystone_juju_ca_cert.crt'
 MEMCACHED_CONF = '/etc/memcached.conf'
 API_PASTE_INI = '%s/api-paste.ini' % NEUTRON_CONF_DIR
 ADMIN_POLICY = "/etc/neutron/policy.d/00-admin.json"
-# NOTE:(fnordahl) placeholder ml2_conf_srov.ini pointing users to ml2_conf.ini
+# NOTE:(fnordahl) placeholder ml2_conf_sriov.ini pointing users to ml2_conf.ini
 # Due to how neutron init scripts are laid out on various Linux
 # distributions we put the [ml2_sriov] section in ml2_conf.ini instead
 # of its default ml2_conf_sriov.ini location.
@@ -198,6 +208,10 @@ BASE_RESOURCE_MAP = OrderedDict([
                      neutron_api_context.HAProxyContext()],
         'services': ['haproxy'],
     }),
+    (APACHE_PORTS_CONF, {
+        'contexts': [],
+        'services': ['apache2'],
+    }),
 ])
 
 # The interface is said to be satisfied if anyone of the interfaces in the
@@ -222,6 +236,7 @@ LIBERTY_RESOURCE_MAP = OrderedDict([
 
 NEUTRON_DB_INIT_RKEY = 'neutron-db-initialised'
 NEUTRON_DB_INIT_ECHO_RKEY = 'neutron-db-initialised-echo'
+NEUTRON_OS_INSTALL_RELEASE_KEY = 'neutron-os-install-release'
 
 
 def is_db_initialised(cluster_rid=None):
@@ -281,7 +296,8 @@ def check_local_db_actions_complete():
 
     NOTE: this must only be called from peer relation context.
     """
-    if not is_db_initialised():
+    # leader must not respond to notifications
+    if is_leader() or not is_db_initialised():
         return
 
     settings = relation_get() or {}
@@ -300,8 +316,10 @@ def check_local_db_actions_complete():
                     "initialisation", level=DEBUG)
                 service_restart('neutron-server')
 
-            # Echo notification
-            relation_set(**{NEUTRON_DB_INIT_ECHO_RKEY: init_id})
+            # Echo notification and ensure init key unset since we are not
+            # leader anymore.
+            relation_set(**{NEUTRON_DB_INIT_ECHO_RKEY: init_id,
+                            NEUTRON_DB_INIT_RKEY: None})
 
 
 def api_port(service):
@@ -379,17 +397,72 @@ def force_etcd_restart():
         service_start('etcd')
 
 
-def manage_plugin():
-    return config('manage-neutron-plugin-legacy-mode')
+def maybe_set_os_install_release(source, min_release=None):
+    """Conditionally store install-time OpenStack release in key/value store.
 
-
-def determine_packages(source=None):
-    # currently all packages match service names
+    :param source: Install source as defined by the ``openstack-origin``
+                   configuration option.
+    :type source: str
+    :param min_release: Minimal OpenStack release required to set the key,
+                        defaults to 'ussuri' if not set.
+    :type min_release: Optional[str]
+    """
+    min_release = min_release or 'ussuri'
     release = get_os_codename_install_source(source)
+
+    cmp_release = CompareOpenStackReleases(release)
+    if cmp_release >= min_release:
+        db = kv()
+        db.set(NEUTRON_OS_INSTALL_RELEASE_KEY, release)
+        db.flush()
+
+
+def get_os_install_release():
+    """Get value stored for install-time OpenStack release from key/value store
+
+    :returns: Install-time OpenStack release or empty string if not set.
+    :rtype: str
+    """
+    db = kv()
+    return db.get(NEUTRON_OS_INSTALL_RELEASE_KEY, '')
+
+
+def manage_plugin():
+    """Determine whether the charm does legacy plugin management.
+
+    :returns: True or False
+    :rtype: bool
+    """
+    install_release = get_os_install_release()
+    if install_release:
+        cmp_install_release = CompareOpenStackReleases(install_release)
+
+    if install_release and cmp_install_release >= 'ussuri':
+        # The unit was installed as ussuri and newer, use default introduced
+        # in the 20.05 OpenStack Charms release. Note that we do not check the
+        # current configured version as downgrades is not supported.
+        default_manage_plugin = False
+    else:
+        default_manage_plugin = True
+
+    config_manage_plugin = config('manage-neutron-plugin-legacy-mode')
+    return (config_manage_plugin if config_manage_plugin is not None
+            else default_manage_plugin)
+
+
+def determine_packages(source=None, openstack_release=None):
+    # currently all packages match service names
+    if openstack_release:
+        release = openstack_release
+    else:
+        release = get_os_codename_install_source(source)
+
     cmp_release = CompareOpenStackReleases(release)
     packages = deepcopy(BASE_PACKAGES)
     if cmp_release >= 'rocky':
         packages.extend(PY3_PACKAGES)
+        if cmp_release >= 'train':
+            packages.remove('python3-neutron-lbaas')
 
     for v in resource_map().values():
         packages.extend(v['services'])
@@ -425,7 +498,9 @@ def determine_packages(source=None):
 def determine_purge_packages():
     '''Return a list of packages to purge for the current OS release'''
     cmp_os_source = CompareOpenStackReleases(os_release('neutron-common'))
-    if cmp_os_source >= 'rocky':
+    if cmp_os_source >= 'train':
+        return PURGE_PACKAGES + PURGE_EXTRA_PACKAGES_ON_TRAIN
+    elif cmp_os_source >= 'rocky':
         return PURGE_PACKAGES
     return []
 
@@ -465,6 +540,9 @@ def resource_map(release=None):
     if CompareOpenStackReleases(release) >= 'liberty':
         resource_map.update(LIBERTY_RESOURCE_MAP)
 
+    if CompareOpenStackReleases(release) >= 'train':
+        resource_map.pop(NEUTRON_LBAAS_CONF)
+
     if os.path.exists('/etc/apache2/conf-available'):
         resource_map.pop(APACHE_CONF)
     else:
@@ -491,8 +569,29 @@ def resource_map(release=None):
             resource_map[ML2_SRIOV_INI]['services'] = services
             resource_map[ML2_SRIOV_INI]['contexts'] = []
     else:
+        plugin_ctxt_instance = neutron_api_context.NeutronApiSDNContext()
+        if (plugin_ctxt_instance.is_default('core_plugin') and
+                plugin_ctxt_instance.is_default('neutron_plugin_config')):
+            # The default core plugin is ML2.  If the driver provided by plugin
+            # subordinate is built on top of ML2, the subordinate will have use
+            # for influencing existing template variables as well as injecting
+            # sections into the ML2 configuration file.
+            conf = neutron_plugin_attribute('ovs', 'config', 'neutron')
+            services = neutron_plugin_attribute('ovs', 'server_services',
+                                                'neutron')
+            if conf not in resource_map:
+                resource_map[conf] = {}
+                resource_map[conf]['services'] = services
+                resource_map[conf]['contexts'] = [
+                    neutron_api_context.NeutronCCContext(),
+                ]
+            resource_map[conf]['contexts'].append(
+                neutron_api_context.NeutronApiSDNContext(
+                    config_file=conf)
+            )
+
         resource_map[NEUTRON_CONF]['contexts'].append(
-            neutron_api_context.NeutronApiSDNContext()
+            plugin_ctxt_instance,
         )
         resource_map[NEUTRON_DEFAULT]['contexts'] = \
             [neutron_api_context.NeutronApiSDNConfigFileContext()]
@@ -694,19 +793,23 @@ def migrate_neutron_database(upgrade=False):
                'head']
         subprocess.check_output(cmd)
 
+    if not is_unit_paused_set():
+        log("Restarting neutron-server following database migration",
+            level=DEBUG)
+        service_restart('neutron-server')
+
     cluster_rids = relation_ids('cluster')
     if cluster_rids:
         # Notify peers so that services get restarted
         log("Notifying peer(s) that db is initialised and restarting services",
             level=DEBUG)
+        # Use the same uuid for all notifications in this cycle to make
+        # them easier to identify.
+        n_id = uuid.uuid4()
         for r_id in cluster_rids:
-            if not is_unit_paused_set():
-                service_restart('neutron-server')
-
-            # Notify peers that tey should also restart their services
+            # Notify peers that they should also restart their services
             shared_db_rel_id = (relation_ids('shared-db') or [None])[0]
-            id = "{}-{}-{}".format(local_unit(), shared_db_rel_id,
-                                   uuid.uuid4())
+            id = "{}-{}-{}".format(local_unit(), shared_db_rel_id, n_id)
             relation_set(relation_id=r_id, **{NEUTRON_DB_INIT_RKEY: id})
 
 
@@ -802,6 +905,11 @@ def get_optional_interfaces():
     optional_interfaces = {}
     if relation_ids('ha'):
         optional_interfaces['ha'] = ['cluster']
+    if not manage_plugin():
+        optional_interfaces['neutron-plugin'] = [
+            'neutron-plugin-api',
+            'neutron-plugin-api-subordinate',
+        ]
     return optional_interfaces
 
 
@@ -815,6 +923,33 @@ def check_optional_relations(configs):
     :param configs: an OSConfigRender() instance.
     :return 2-tuple: (string, string) = (status, message)
     """
+    if relation_ids('external-dns'):
+        if config('designate_endpoint') is not None:
+            if config('reverse-dns-lookup'):
+                ipv4_prefix_size = config('ipv4-ptr-zone-prefix-size')
+                valid_ipv4_prefix_size = (
+                    (8 <= ipv4_prefix_size <= 24) and
+                    (ipv4_prefix_size % 8) == 0)
+                if not valid_ipv4_prefix_size:
+                    log('Invalid ipv4-ptr-zone-prefix-size. Value of '
+                        'ipv4-ptr-zone-prefix-size has to be multiple'
+                        ' of 8, with maximum value of 24 and minimum value '
+                        'of 8.', level=DEBUG)
+                    return ('blocked',
+                            'Invalid configuration: '
+                            'ipv4-ptr-zone-prefix-size')
+                ipv6_prefix_size = config('ipv6-ptr-zone-prefix-size')
+                valid_ipv6_prefix_size = (
+                    (4 <= ipv6_prefix_size <= 124) and
+                    (ipv6_prefix_size % 4) == 0)
+                if not valid_ipv6_prefix_size:
+                    log('Invalid ipv6-ptr-zone-prefix-size. Value of '
+                        'ipv6-ptr-zone-prefix-size has to be multiple'
+                        ' of 4, with maximum value of 124 and minimum value '
+                        'of 4.', level=DEBUG)
+                    return ('blocked',
+                            'Invalid configuration: '
+                            'ipv6-ptr-zone-prefix-size')
     if relation_ids('ha'):
         try:
             get_hacluster_config()
@@ -866,10 +1001,11 @@ def assess_status_func(configs):
     """
     required_interfaces = REQUIRED_INTERFACES.copy()
     required_interfaces.update(get_optional_interfaces())
+    _services, _ = get_managed_services_and_ports(services(), [])
     return make_assess_status_func(
         configs, required_interfaces,
         charm_func=check_optional_relations,
-        services=services(), ports=None)
+        services=_services, ports=None)
 
 
 def pause_unit_helper(configs):
@@ -901,6 +1037,7 @@ def _pause_resume_helper(f, configs):
     """
     # TODO(ajkavanagh) - ports= has been left off because of the race hazard
     # that exists due to service_start()
+    _services, _ = get_managed_services_and_ports(services(), [])
     f(assess_status_func(configs),
-      services=services(),
+      services=_services,
       ports=None)

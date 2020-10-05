@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import sys
 import uuid
@@ -22,21 +23,24 @@ from subprocess import (
 )
 
 from charmhelpers.core.hookenv import (
+    DEBUG,
+    ERROR,
     Hooks,
     UnregisteredHookError,
     config,
+    is_leader,
+    leader_get,
+    leader_set,
     local_unit,
     log,
-    DEBUG,
-    ERROR,
+    open_port,
+    related_units,
     relation_get,
+    relation_id,
     relation_ids,
     relation_set,
     status_set,
-    open_port,
     unit_get,
-    related_units,
-    is_leader,
 )
 
 from charmhelpers.core.host import (
@@ -62,47 +66,54 @@ from charmhelpers.contrib.openstack.utils import (
     CompareOpenStackReleases,
     series_upgrade_prepare,
     series_upgrade_complete,
+    is_db_maintenance_mode,
 )
 
 from neutron_api_utils import (
+    ADMIN_POLICY,
+    CLUSTER_RES,
+    NEUTRON_CONF,
     additional_install_locations,
     ADMIN_POLICY,
     API_PASTE_INI,
     api_port,
     assess_status,
-    CLUSTER_RES,
+    check_local_db_actions_complete,
     determine_packages,
     determine_ports,
     do_openstack_upgrade,
     dvr_router_present,
     force_etcd_restart,
     is_api_ready,
+    is_db_initialised,
     l3ha_router_present,
+    manage_plugin,
+    maybe_set_os_install_release,
     migrate_neutron_database,
-    NEUTRON_CONF,
     neutron_ready,
+    pause_unit_helper,
     register_configs,
+    remove_old_packages,
     restart_map,
+    resume_unit_helper,
     services,
     setup_ipv6,
-    check_local_db_actions_complete,
-    pause_unit_helper,
-    resume_unit_helper,
-    remove_old_packages,
-    is_db_initialised,
 )
 from neutron_api_context import (
+    EtcdContext,
+    IdentityServiceContext,
+    NeutronApiSDNContext,
+    NeutronCCContext,
     get_dns_domain,
     get_dvr,
-    get_l3ha,
     get_l2population,
+    get_l3ha,
     get_overlay_network_type,
-    IdentityServiceContext,
-    is_qos_requested_and_valid,
-    is_vlan_trunking_requested_and_valid,
     is_nfg_logging_enabled,
     is_nsg_logging_enabled,
-    EtcdContext,
+    is_qos_requested_and_valid,
+    is_port_forwarding_enabled,
+    is_vlan_trunking_requested_and_valid,
 )
 
 from charmhelpers.contrib.hahelpers.cluster import (
@@ -132,6 +143,11 @@ from charmhelpers.contrib.network.ip import (
 from charmhelpers.contrib.openstack.cert_utils import (
     get_certificate_request,
     process_certificates,
+)
+
+from charmhelpers.contrib.openstack.policyd import (
+    maybe_do_policyd_overrides,
+    maybe_do_policyd_overrides_on_config_changed,
 )
 
 from charmhelpers.contrib.openstack.context import ADDRESS_TYPES
@@ -200,6 +216,11 @@ def install():
     execd_preinstall()
     openstack_origin = config('openstack-origin')
     configure_installation_source(openstack_origin)
+
+    # Manage change of default configuration option values gated on
+    # install-time OpenStack release
+    maybe_set_os_install_release(openstack_origin)
+
     neutron_plugin = config('neutron-plugin')
     additional_install_locations(neutron_plugin, openstack_origin)
 
@@ -209,11 +230,17 @@ def install():
     packages = determine_packages(openstack_origin)
     apt_install(packages, fatal=True)
 
-    [open_port(port) for port in determine_ports()]
+    for port in determine_ports():
+        open_port(port)
 
     if neutron_plugin == 'midonet':
         mkdir('/etc/neutron/plugins/midonet', owner='neutron', group='neutron',
               perms=0o755, force=False)
+    # call the policy overrides handler which will install any policy overrides
+    maybe_do_policyd_overrides(
+        os_release('neutron-server'),
+        'neutron',
+        restart_handler=lambda: service_restart('neutron-server'))
 
 
 @hooks.hook('vsd-rest-api-relation-joined')
@@ -252,10 +279,31 @@ def vsd_changed(relation_id=None, remote_unit=None):
 
 
 @hooks.hook('upgrade-charm')
+@restart_on_change(restart_map(), stopstart=True)
+@harden()
+def upgrade_charm():
+    common_upgrade_charm_and_config_changed()
+    # call the policy overrides handler which will install any policy overrides
+    maybe_do_policyd_overrides(
+        os_release('neutron-server'),
+        'neutron',
+        restart_handler=lambda: service_restart('neutron-server'))
+
+
 @hooks.hook('config-changed')
 @restart_on_change(restart_map(), stopstart=True)
 @harden()
 def config_changed():
+    common_upgrade_charm_and_config_changed()
+    # call the policy overrides handler which will install any policy overrides
+    maybe_do_policyd_overrides_on_config_changed(
+        os_release('neutron-server'),
+        'neutron',
+        restart_handler=lambda: service_restart('neutron-server'))
+
+
+def common_upgrade_charm_and_config_changed():
+    """Common code between upgrade-charm and config-changed hooks"""
     # if we are paused, delay doing any config changed hooks.
     # It is forced on the resume.
     if is_unit_paused_set():
@@ -293,9 +341,8 @@ def config_changed():
         config('openstack-origin')
     )
     status_set('maintenance', 'Installing apt packages')
-    apt_install(filter_installed_packages(
-                determine_packages(config('openstack-origin'))),
-                fatal=True)
+    pkgs = determine_packages(openstack_release=os_release('neutron-server'))
+    apt_install(filter_installed_packages(pkgs), fatal=True)
     packages_removed = remove_old_packages()
     configure_https()
     update_nrpe_config()
@@ -320,7 +367,10 @@ def config_changed():
         identity_joined(rid=r_id)
     for r_id in relation_ids('ha'):
         ha_joined(relation_id=r_id)
-    [cluster_joined(rid) for rid in relation_ids('cluster')]
+    for r_id in relation_ids('neutron-plugin-api-subordinate'):
+        neutron_plugin_api_subordinate_relation_joined(relid=r_id)
+    for rid in relation_ids('cluster'):
+        cluster_joined(rid)
 
 
 @hooks.hook('amqp-relation-joined')
@@ -365,6 +415,9 @@ def db_joined():
 @hooks.hook('shared-db-relation-changed')
 @restart_on_change(restart_map())
 def db_changed():
+    if is_db_maintenance_mode():
+        log('Database maintenance mode, aborting hook.', level=DEBUG)
+        return
     if 'shared-db' not in CONFIGS.complete_contexts():
         log('shared-db relation incomplete. Peer not ready?')
         return
@@ -435,6 +488,7 @@ def neutron_api_relation_joined(rid=None):
     neutron_url = '%s:%s' % (base_url, api_port('neutron-server'))
     relation_data = {
         'enable-sriov': config('enable-sriov'),
+        'enable-hardware-offload': config('enable-hardware-offload'),
         'neutron-url': neutron_url,
         'neutron-plugin': config('neutron-plugin'),
     }
@@ -501,6 +555,7 @@ def neutron_plugin_api_relation_joined(rid=None):
             'enable-vlan-trunking': is_vlan_trunking_requested_and_valid(),
             'enable-nsg-logging': is_nsg_logging_enabled(),
             'enable-nfg-logging': is_nfg_logging_enabled(),
+            'enable-port-forwarding': is_port_forwarding_enabled(),
             'overlay-network-type': get_overlay_network_type(),
             'addr': unit_get('private-address'),
             'polling-interval': config('polling-interval'),
@@ -602,23 +657,42 @@ def ha_changed():
             'neutron-plugin-api-subordinate-relation-changed')
 @restart_on_change(restart_map(), stopstart=True)
 def neutron_plugin_api_subordinate_relation_joined(relid=None):
-    '''
-    -changed handles relation data set by a subordinate.
-    '''
-    relation_data = {'neutron-api-ready': 'no'}
+    relation_data = {}
+    if is_db_initialised():
+        db_migration_key = 'migrate-database-nonce'
+        if not relid:
+            relid = relation_id()
+        leader_key = '{}-{}'.format(db_migration_key, relid)
+        for unit in related_units(relid):
+            nonce = relation_get(db_migration_key, rid=relid, unit=unit)
+            if nonce:
+                if is_leader() and leader_get(leader_key) != nonce:
+                    migrate_neutron_database(upgrade=True)
+                    # track nonce in leader storage to avoid superfluous
+                    # migrations
+                    leader_set({leader_key: nonce})
+                # set nonce back on relation to signal completion to other end
+                # we do this regardless of leadership status so that
+                # subordinates connected to non-leader units can proceed.
+                relation_data[db_migration_key] = nonce
+
+    relation_data['neutron-api-ready'] = 'no'
     if is_api_ready(CONFIGS):
-        relation_data['neutron-api-ready'] = "yes"
+        relation_data['neutron-api-ready'] = 'yes'
+    if not manage_plugin():
+        neutron_cc_ctxt = NeutronCCContext()()
+        plugin_instance = NeutronApiSDNContext()
+        neutron_config_data = {
+            k: v for k, v in neutron_cc_ctxt.items()
+            if plugin_instance.is_allowed(k)}
+        if neutron_config_data:
+            relation_data['neutron_config_data'] = json.dumps(
+                neutron_config_data)
     relation_set(relation_id=relid, **relation_data)
 
     # there is no race condition with the neutron service restart
     # as juju propagates the changes done in relation_set only after
     # the hook exists
-    CONFIGS.write(API_PASTE_INI)
-
-
-@hooks.hook('neutron-plugin-api-subordinate-relation-changed')
-@restart_on_change(restart_map(), stopstart=True)
-def neutron_plugin_api_relation_changed():
     CONFIGS.write_all()
 
 
@@ -717,6 +791,10 @@ def certs_joined(relation_id=None):
 def certs_changed(relation_id=None, unit=None):
     process_certificates('neutron', relation_id, unit)
     configure_https()
+    # If endpoint has switched to https, need to tell
+    # nova-cc
+    for r_id in relation_ids('neutron-api'):
+        neutron_api_relation_joined(rid=r_id)
 
 
 @hooks.hook('pre-series-upgrade')

@@ -18,14 +18,14 @@
 # Authors:
 #  Matthew Wedgwood <matthew.wedgwood@canonical.com>
 
-import subprocess
-import pwd
+import glob
 import grp
 import os
-import glob
-import shutil
+import pwd
 import re
 import shlex
+import shutil
+import subprocess
 import yaml
 
 from charmhelpers.core.hookenv import (
@@ -265,6 +265,11 @@ class NRPE(object):
                 relation_set(relation_id=rid, relation_settings={'primary': self.primary})
         self.remove_check_queue = set()
 
+    @classmethod
+    def does_nrpe_conf_dir_exist(cls):
+        """Return True if th nrpe_confdif directory exists."""
+        return os.path.isdir(cls.nrpe_confdir)
+
     def add_check(self, *args, **kwargs):
         shortname = None
         if kwargs.get('shortname') is None:
@@ -310,6 +315,12 @@ class NRPE(object):
 
         nrpe_monitors = {}
         monitors = {"monitors": {"remote": {"nrpe": nrpe_monitors}}}
+
+        # check that the charm can write to the conf dir.  If not, then nagios
+        # probably isn't installed, and we can defer.
+        if not self.does_nrpe_conf_dir_exist():
+            return
+
         for nrpecheck in self.checks:
             nrpecheck.write(self.nagios_context, self.hostname,
                             self.nagios_servicegroups)
@@ -400,7 +411,7 @@ def add_init_service_checks(nrpe, services, unit_name, immediate_check=True):
         upstart_init = '/etc/init/%s.conf' % svc
         sysv_init = '/etc/init.d/%s' % svc
 
-        if host.init_is_systemd():
+        if host.init_is_systemd(service_name=svc):
             nrpe.add_check(
                 shortname=svc,
                 description='process check {%s}' % unit_name,
@@ -484,3 +495,17 @@ def add_haproxy_checks(nrpe, unit_name):
         shortname='haproxy_queue',
         description='Check HAProxy queue depth {%s}' % unit_name,
         check_cmd='check_haproxy_queue_depth.sh')
+
+
+def remove_deprecated_check(nrpe, deprecated_services):
+    """
+    Remove checks fro deprecated services in list
+
+    :param nrpe: NRPE object to remove check from
+    :type nrpe: NRPE
+    :param deprecated_services: List of deprecated services that are removed
+    :type deprecated_services: list
+    """
+    for dep_svc in deprecated_services:
+        log('Deprecated service: {}'.format(dep_svc))
+        nrpe.remove_check(shortname=dep_svc)

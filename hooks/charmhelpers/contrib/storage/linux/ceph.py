@@ -22,6 +22,7 @@
 #  Adam Gandelman <adamg@ubuntu.com>
 #
 
+import collections
 import errno
 import hashlib
 import math
@@ -91,6 +92,89 @@ DEFAULT_PGS_PER_OSD_TARGET = 100
 DEFAULT_POOL_WEIGHT = 10.0
 LEGACY_PG_COUNT = 200
 DEFAULT_MINIMUM_PGS = 2
+AUTOSCALER_DEFAULT_PGS = 32
+
+
+class OsdPostUpgradeError(Exception):
+    """Error class for OSD post-upgrade operations."""
+    pass
+
+
+class OSDSettingConflict(Exception):
+    """Error class for conflicting osd setting requests."""
+    pass
+
+
+class OSDSettingNotAllowed(Exception):
+    """Error class for a disallowed setting."""
+    pass
+
+
+OSD_SETTING_EXCEPTIONS = (OSDSettingConflict, OSDSettingNotAllowed)
+
+OSD_SETTING_WHITELIST = [
+    'osd heartbeat grace',
+    'osd heartbeat interval',
+]
+
+
+def _order_dict_by_key(rdict):
+    """Convert a dictionary into an OrderedDict sorted by key.
+
+    :param rdict: Dictionary to be ordered.
+    :type rdict: dict
+    :returns: Ordered Dictionary.
+    :rtype: collections.OrderedDict
+    """
+    return collections.OrderedDict(sorted(rdict.items(), key=lambda k: k[0]))
+
+
+def get_osd_settings(relation_name):
+    """Consolidate requested osd settings from all clients.
+
+    Consolidate requested osd settings from all clients. Check that the
+    requested setting is on the whitelist and it does not conflict with
+    any other requested settings.
+
+    :returns: Dictionary of settings
+    :rtype: dict
+
+    :raises: OSDSettingNotAllowed
+    :raises: OSDSettingConflict
+    """
+    rel_ids = relation_ids(relation_name)
+    osd_settings = {}
+    for relid in rel_ids:
+        for unit in related_units(relid):
+            unit_settings = relation_get('osd-settings', unit, relid) or '{}'
+            unit_settings = json.loads(unit_settings)
+            for key, value in unit_settings.items():
+                if key not in OSD_SETTING_WHITELIST:
+                    msg = 'Illegal settings "{}"'.format(key)
+                    raise OSDSettingNotAllowed(msg)
+                if key in osd_settings:
+                    if osd_settings[key] != unit_settings[key]:
+                        msg = 'Conflicting settings for "{}"'.format(key)
+                        raise OSDSettingConflict(msg)
+                else:
+                    osd_settings[key] = value
+    return _order_dict_by_key(osd_settings)
+
+
+def send_osd_settings():
+    """Pass on requested OSD settings to osd units."""
+    try:
+        settings = get_osd_settings('client')
+    except OSD_SETTING_EXCEPTIONS as e:
+        # There is a problem with the settings, not passing them on. Update
+        # status will notify the user.
+        log(e, level=ERROR)
+        return
+    data = {
+        'osd-settings': json.dumps(settings, sort_keys=True)}
+    for relid in relation_ids('osd'):
+        relation_set(relation_id=relid,
+                     relation_settings=data)
 
 
 def validator(value, valid_type, valid_range=None):
@@ -301,6 +385,7 @@ class ReplicatedPool(Pool):
                  percent_data=10.0, app_name=None):
         super(ReplicatedPool, self).__init__(service=service, name=name)
         self.replicas = replicas
+        self.percent_data = percent_data
         if pg_num:
             # Since the number of placement groups were specified, ensure
             # that there aren't too many created.
@@ -315,21 +400,45 @@ class ReplicatedPool(Pool):
 
     def create(self):
         if not pool_exists(self.service, self.name):
+            nautilus_or_later = cmp_pkgrevno('ceph-common', '14.2.0') >= 0
             # Create it
-            cmd = ['ceph', '--id', self.service, 'osd', 'pool', 'create',
-                   self.name, str(self.pg_num)]
+            if nautilus_or_later:
+                cmd = [
+                    'ceph', '--id', self.service, 'osd', 'pool', 'create',
+                    '--pg-num-min={}'.format(
+                        min(AUTOSCALER_DEFAULT_PGS, self.pg_num)
+                    ),
+                    self.name, str(self.pg_num)
+                ]
+            else:
+                cmd = [
+                    'ceph', '--id', self.service, 'osd', 'pool', 'create',
+                    self.name, str(self.pg_num)
+                ]
+
             try:
                 check_call(cmd)
                 # Set the pool replica size
                 update_pool(client=self.service,
                             pool=self.name,
                             settings={'size': str(self.replicas)})
+                if nautilus_or_later:
+                    # Ensure we set the expected pool ratio
+                    update_pool(client=self.service,
+                                pool=self.name,
+                                settings={'target_size_ratio': str(self.percent_data / 100.0)})
                 try:
                     set_app_name_for_pool(client=self.service,
                                           pool=self.name,
                                           name=self.app_name)
                 except CalledProcessError:
-                    log('Could not set app name for pool {}'.format(self.name, level=WARNING))
+                    log('Could not set app name for pool {}'.format(self.name), level=WARNING)
+                if 'pg_autoscaler' in enabled_manager_modules():
+                    try:
+                        enable_pg_autoscale(self.service, self.name)
+                    except CalledProcessError as e:
+                        log('Could not configure auto scaling for pool {}: {}'.format(
+                            self.name, e), level=WARNING)
             except CalledProcessError:
                 raise
 
@@ -370,10 +479,24 @@ class ErasurePool(Pool):
             k = int(erasure_profile['k'])
             m = int(erasure_profile['m'])
             pgs = self.get_pgs(k + m, self.percent_data)
+            nautilus_or_later = cmp_pkgrevno('ceph-common', '14.2.0') >= 0
             # Create it
-            cmd = ['ceph', '--id', self.service, 'osd', 'pool', 'create',
-                   self.name, str(pgs), str(pgs),
-                   'erasure', self.erasure_code_profile]
+            if nautilus_or_later:
+                cmd = [
+                    'ceph', '--id', self.service, 'osd', 'pool', 'create',
+                    '--pg-num-min={}'.format(
+                        min(AUTOSCALER_DEFAULT_PGS, pgs)
+                    ),
+                    self.name, str(pgs), str(pgs),
+                    'erasure', self.erasure_code_profile
+                ]
+            else:
+                cmd = [
+                    'ceph', '--id', self.service, 'osd', 'pool', 'create',
+                    self.name, str(pgs), str(pgs),
+                    'erasure', self.erasure_code_profile
+                ]
+
             try:
                 check_call(cmd)
                 try:
@@ -381,12 +504,51 @@ class ErasurePool(Pool):
                                           pool=self.name,
                                           name=self.app_name)
                 except CalledProcessError:
-                    log('Could not set app name for pool {}'.format(self.name, level=WARNING))
+                    log('Could not set app name for pool {}'.format(self.name), level=WARNING)
+                if nautilus_or_later:
+                    # Ensure we set the expected pool ratio
+                    update_pool(client=self.service,
+                                pool=self.name,
+                                settings={'target_size_ratio': str(self.percent_data / 100.0)})
+                if 'pg_autoscaler' in enabled_manager_modules():
+                    try:
+                        enable_pg_autoscale(self.service, self.name)
+                    except CalledProcessError as e:
+                        log('Could not configure auto scaling for pool {}: {}'.format(
+                            self.name, e), level=WARNING)
             except CalledProcessError:
                 raise
 
     """Get an existing erasure code profile if it already exists.
        Returns json formatted output"""
+
+
+def enabled_manager_modules():
+    """Return a list of enabled manager modules.
+
+    :rtype: List[str]
+    """
+    cmd = ['ceph', 'mgr', 'module', 'ls']
+    try:
+        modules = check_output(cmd)
+        if six.PY3:
+            modules = modules.decode('UTF-8')
+    except CalledProcessError as e:
+        log("Failed to list ceph modules: {}".format(e), WARNING)
+        return []
+    modules = json.loads(modules)
+    return modules['enabled_modules']
+
+
+def enable_pg_autoscale(service, pool_name):
+    """
+    Enable Ceph's PG autoscaler for the specified pool.
+
+    :param service: six.string_types. The Ceph user name to run the command under
+    :param pool_name: six.string_types. The name of the pool to enable sutoscaling on
+    :raise: CalledProcessError if the command fails
+    """
+    check_call(['ceph', '--id', service, 'osd', 'pool', 'set', pool_name, 'pg_autoscale_mode', 'on'])
 
 
 def get_mon_map(service):
@@ -989,7 +1151,7 @@ def filesystem_mounted(fs):
 def make_filesystem(blk_device, fstype='ext4', timeout=10):
     """Make a new filesystem on the specified block device."""
     count = 0
-    e_noent = os.errno.ENOENT
+    e_noent = errno.ENOENT
     while not os.path.exists(blk_device):
         if count >= timeout:
             log('Gave up waiting on block device %s' % blk_device,
@@ -1134,6 +1296,15 @@ class CephBrokerRq(object):
             self.request_id = str(uuid.uuid1())
         self.ops = []
 
+    def add_op(self, op):
+        """Add an op if it is not already in the list.
+
+        :param op: Operation to add.
+        :type op: dict
+        """
+        if op not in self.ops:
+            self.ops.append(op)
+
     def add_op_request_access_to_group(self, name, namespace=None,
                                        permission=None, key_name=None,
                                        object_prefix_permissions=None):
@@ -1147,7 +1318,7 @@ class CephBrokerRq(object):
                 'rwx': ['prefix1', 'prefix2'],
                 'class-read': ['prefix3']}
         """
-        self.ops.append({
+        self.add_op({
             'op': 'add-permissions-to-key', 'group': name,
             'namespace': namespace,
             'name': key_name or service_name(),
@@ -1200,11 +1371,11 @@ class CephBrokerRq(object):
         if pg_num and weight:
             raise ValueError('pg_num and weight are mutually exclusive')
 
-        self.ops.append({'op': 'create-pool', 'name': name,
-                         'replicas': replica_count, 'pg_num': pg_num,
-                         'weight': weight, 'group': group,
-                         'group-namespace': namespace, 'app-name': app_name,
-                         'max-bytes': max_bytes, 'max-objects': max_objects})
+        self.add_op({'op': 'create-pool', 'name': name,
+                     'replicas': replica_count, 'pg_num': pg_num,
+                     'weight': weight, 'group': group,
+                     'group-namespace': namespace, 'app-name': app_name,
+                     'max-bytes': max_bytes, 'max-objects': max_objects})
 
     def add_op_create_erasure_pool(self, name, erasure_profile=None,
                                    weight=None, group=None, app_name=None,
@@ -1232,12 +1403,12 @@ class CephBrokerRq(object):
         :param max_objects: Maximum objects quota to apply
         :type max_objects: int
         """
-        self.ops.append({'op': 'create-pool', 'name': name,
-                         'pool-type': 'erasure',
-                         'erasure-profile': erasure_profile,
-                         'weight': weight,
-                         'group': group, 'app-name': app_name,
-                         'max-bytes': max_bytes, 'max-objects': max_objects})
+        self.add_op({'op': 'create-pool', 'name': name,
+                     'pool-type': 'erasure',
+                     'erasure-profile': erasure_profile,
+                     'weight': weight,
+                     'group': group, 'app-name': app_name,
+                     'max-bytes': max_bytes, 'max-objects': max_objects})
 
     def set_ops(self, ops):
         """Set request ops to provided value.
@@ -1573,5 +1744,67 @@ class CephConfContext(object):
                 continue
 
             ceph_conf[key] = conf[key]
-
         return ceph_conf
+
+
+class CephOSDConfContext(CephConfContext):
+    """Ceph config (ceph.conf) context.
+
+    Consolidates settings from config-flags via CephConfContext with
+    settings provided by the mons. The config-flag values are preserved in
+    conf['osd'], settings from the mons which do not clash with config-flag
+    settings are in conf['osd_from_client'] and finally settings which do
+    clash are in conf['osd_from_client_conflict']. Rather than silently drop
+    the conflicting settings they are provided in the context so they can be
+    rendered commented out to give some visability to the admin.
+    """
+
+    def __init__(self, permitted_sections=None):
+        super(CephOSDConfContext, self).__init__(
+            permitted_sections=permitted_sections)
+        try:
+            self.settings_from_mons = get_osd_settings('mon')
+        except OSDSettingConflict:
+            log(
+                "OSD settings from mons are inconsistent, ignoring them",
+                level=WARNING)
+            self.settings_from_mons = {}
+
+    def filter_osd_from_mon_settings(self):
+        """Filter settings from client relation against config-flags.
+
+        :returns: A tuple (
+            ,config-flag values,
+            ,client settings which do not conflict with config-flag values,
+            ,client settings which confilct with config-flag values)
+        :rtype: (OrderedDict, OrderedDict, OrderedDict)
+        """
+        ceph_conf = super(CephOSDConfContext, self).__call__()
+        conflicting_entries = {}
+        clear_entries = {}
+        for key, value in self.settings_from_mons.items():
+            if key in ceph_conf.get('osd', {}):
+                if ceph_conf['osd'][key] != value:
+                    conflicting_entries[key] = value
+            else:
+                clear_entries[key] = value
+        clear_entries = _order_dict_by_key(clear_entries)
+        conflicting_entries = _order_dict_by_key(conflicting_entries)
+        return ceph_conf, clear_entries, conflicting_entries
+
+    def __call__(self):
+        """Construct OSD config context.
+
+        Standard context with two additional special keys.
+            osd_from_client_conflict: client settings which confilct with
+                                      config-flag values
+            osd_from_client: settings which do not conflict with config-flag
+                             values
+
+        :returns: OSD config context dict.
+        :rtype: dict
+        """
+        conf, osd_clear, osd_conflict = self.filter_osd_from_mon_settings()
+        conf['osd_from_client_conflict'] = osd_conflict
+        conf['osd_from_client'] = osd_clear
+        return conf

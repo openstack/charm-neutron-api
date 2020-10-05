@@ -1,0 +1,43 @@
+variables:
+  openstack-origin: &openstack-origin cloud:focal-victoria
+
+series: &series focal
+
+applications:
+  keystone-mysql-router:
+    charm: cs:~openstack-charmers/mysql-router
+  neutron-mysql-router:
+    charm: cs:~openstack-charmers/mysql-router
+  mysql-innodb-cluster:
+    charm: cs:~openstack-charmers/mysql-innodb-cluster
+    num_units: 3
+    options:
+      source: *openstack-origin
+  rabbitmq-server:
+    charm: cs:~openstack-charmers/rabbitmq-server
+    num_units: 1
+    options:
+      source: *openstack-origin
+  neutron-api:
+    charm: cs:~openstack-charmers/neutron-api
+    series: *series
+    num_units: 1
+    options:
+      manage-neutron-plugin-legacy-mode: True
+      flat-network-providers: physnet1
+      neutron-security-groups: true
+      openstack-origin: *openstack-origin
+  keystone:
+    charm: cs:~openstack-charmers/keystone
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+relations:
+  - - neutron-api:amqp
+    - rabbitmq-server:amqp
+  - - neutron-api:identity-service
+    - keystone:identity-service
+  - ["keystone:shared-db", "keystone-mysql-router:shared-db"]
+  - ["neutron-api:shared-db", "neutron-mysql-router:shared-db"]
+  - ["keystone-mysql-router:db-router", "mysql-innodb-cluster:db-router"]
+  - ["neutron-mysql-router:db-router", "mysql-innodb-cluster:db-router"]

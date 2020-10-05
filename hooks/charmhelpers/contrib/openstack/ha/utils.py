@@ -157,10 +157,11 @@ def generate_ha_relation_data(service,
     _relation_data = {'resources': {}, 'resource_params': {}}
 
     if haproxy_enabled:
+        _meta = 'meta migration-threshold="INFINITY" failure-timeout="5s"'
         _haproxy_res = 'res_{}_haproxy'.format(service)
         _relation_data['resources'] = {_haproxy_res: 'lsb:haproxy'}
         _relation_data['resource_params'] = {
-            _haproxy_res: 'op monitor interval="5s"'
+            _haproxy_res: '{} op monitor interval="5s"'.format(_meta)
         }
         _relation_data['init_services'] = {_haproxy_res: 'haproxy'}
         _relation_data['clones'] = {
@@ -289,7 +290,7 @@ def update_hacluster_vip(service, relation_data):
 
         iface, netmask, fallback = get_vip_settings(vip)
 
-        vip_monitoring = 'op monitor depth="0" timeout="20s" interval="10s"'
+        vip_monitoring = 'op monitor timeout="20s" interval="10s" depth="0"'
         if iface is not None:
             # NOTE(jamespage): Delete old VIP resources
             # Old style naming encoding iface in name

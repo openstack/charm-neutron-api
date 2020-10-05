@@ -261,6 +261,27 @@ def is_nfg_logging_enabled():
     return False
 
 
+def is_port_forwarding_enabled():
+    """
+    Check if Neutron port forwarding featur should be enabled.
+
+    returns: True if enable-port-forwarding config item is True,
+        otherwise False.
+    :rtype: boolean
+    """
+    if config('enable-port-forwarding'):
+
+        if CompareOpenStackReleases(os_release('neutron-server')) < 'rocky':
+            log("The port forwarding option is"
+                "only supported on Rocky or later",
+                ERROR)
+            return False
+
+        return True
+
+    return False
+
+
 def is_vlan_trunking_requested_and_valid():
     """Check whether VLAN trunking should be enabled by checking whether
        it has been requested and, if it has, is it supported in the current
@@ -349,6 +370,10 @@ class NeutronCCContext(context.NeutronContext):
     def neutron_l3ha(self):
         return get_l3ha()
 
+    @property
+    def neutron_igmp_snoop(self):
+        return config('enable-igmp-snooping')
+
     # Do not need the plugin agent installed on the api server
     def _ensure_packages(self):
         pass
@@ -424,6 +449,7 @@ class NeutronCCContext(context.NeutronContext):
         ctxt['external_network'] = config('neutron-external-network')
         release = os_release('neutron-server')
         cmp_release = CompareOpenStackReleases(release)
+        ctxt['enable_igmp_snooping'] = self.neutron_igmp_snoop
         if config('neutron-plugin') == 'vsp' and cmp_release < 'newton':
             _config = config()
             for k, v in _config.items():
@@ -586,8 +612,13 @@ class NeutronCCContext(context.NeutronContext):
                 'stein': ['router', 'firewall_v2', 'metering', 'segments',
                           ('neutron_dynamic_routing.'
                            'services.bgp.bgp_plugin.BgpPlugin')],
+                'train': ['router', 'firewall_v2', 'metering', 'segments',
+                          ('neutron_dynamic_routing.'
+                           'services.bgp.bgp_plugin.BgpPlugin')],
+                # TODO: FWaaS was deprecated at Ussuri and will be removed
+                # during the W cycle
             }
-            if cmp_release >= 'rocky':
+            if cmp_release >= 'rocky' and cmp_release < 'train':
                 if ctxt.get('load_balancer_name', None):
                     # TODO(fnordahl): Remove when ``neutron_lbaas`` is retired
                     service_plugins[release].append('lbaasv2-proxy')
@@ -595,6 +626,8 @@ class NeutronCCContext(context.NeutronContext):
                     # TODO(fnordahl): Remove fall-back in next charm release
                     service_plugins[release].append('lbaasv2')
 
+            # TODO: FWaaS was deprecated at Ussuri and will be removed
+            # during the W cycle
             if cmp_release >= 'stein':
                 ctxt['firewall_v2'] = True
 
@@ -603,6 +636,9 @@ class NeutronCCContext(context.NeutronContext):
 
             if is_nsg_logging_enabled() or is_nfg_logging_enabled():
                 ctxt['service_plugins'].append('log')
+
+            if is_port_forwarding_enabled():
+                ctxt['service_plugins'].append('port_forwarding')
 
             if is_qos_requested_and_valid():
                 ctxt['service_plugins'].append('qos')
@@ -676,17 +712,26 @@ class EtcdContext(context.OSContextGenerator):
 
 
 class NeutronApiSDNContext(context.SubordinateConfigContext):
-    interfaces = 'neutron-plugin-api-subordinate'
+    interfaces = ['neutron-plugin-api-subordinate']
 
-    def __init__(self):
+    def __init__(self, config_file='/etc/neutron/neutron.conf'):
+        """Initialize context for plugin subordinates.
+
+        :param config_file: Which config file we accept custom sections for
+        :type config_file: str
+        """
         super(NeutronApiSDNContext, self).__init__(
             interface='neutron-plugin-api-subordinate',
             service='neutron-api',
-            config_file='/etc/neutron/neutron.conf')
-
-    def __call__(self):
-        ctxt = super(NeutronApiSDNContext, self).__call__()
-        defaults = {
+            config_file=config_file)
+        # NOTE: The defaults dict serve a dual purpose.
+        # 1. Only the keys listed here are picked up from the relation.
+        # 2. Any keys listed here with a value will be used as a default
+        #    if not specified on the relation.
+        #
+        # Any empty values will not be returned on this context to allow
+        # values to be passed on from other contexts.
+        self.defaults = {
             'core-plugin': {
                 'templ_key': 'core_plugin',
                 'value': 'neutron.plugins.ml2.plugin.Ml2Plugin',
@@ -697,7 +742,7 @@ class NeutronApiSDNContext(context.SubordinateConfigContext):
             },
             'service-plugins': {
                 'templ_key': 'service_plugins',
-                'value': 'router,firewall,lbaas,vpnaas,metering',
+                'value': '',
             },
             'restart-trigger': {
                 'templ_key': 'restart_trigger',
@@ -711,7 +756,55 @@ class NeutronApiSDNContext(context.SubordinateConfigContext):
                 'templ_key': 'api_extensions_path',
                 'value': '',
             },
+            'extension-drivers': {
+                'templ_key': 'extension_drivers',
+                'value': '',
+            },
+            'mechanism-drivers': {
+                'templ_key': 'mechanism_drivers',
+                'value': '',
+            },
+            'tenant-network-types': {
+                'templ_key': 'tenant_network_types',
+                'value': '',
+            },
+            'neutron-security-groups': {
+                'templ_key': 'neutron_security_groups',
+                'value': '',
+            },
         }
+
+    def is_default(self, templ_key):
+        """Check whether value associated with specified key is the default.
+
+        :param templ_key: Key to look up
+        :type templ_key: str
+        :returns: True if default, False if not, None if key does not exist.
+        :rtype: Option[bool, NoneValue]
+        """
+        ctxt = self.__call__()
+        for interface_key in self.defaults:
+            if self.defaults[interface_key]['templ_key'] == templ_key:
+                break
+        else:
+            return None
+        return ctxt.get(templ_key) == self.defaults[interface_key]['value']
+
+    def is_allowed(self, templ_key):
+        """Check whether specified key is allowed on the relation.
+
+        :param templ_key: Key to lookup
+        :type templ_key: str
+        :returns: True or False
+        :rtype: bool
+        """
+        for interface_key in self.defaults:
+            if self.defaults[interface_key]['templ_key'] == templ_key:
+                return True
+        return False
+
+    def __call__(self):
+        ctxt = super(NeutronApiSDNContext, self).__call__()
         for rid in relation_ids('neutron-plugin-api-subordinate'):
             for unit in related_units(rid):
                 rdata = relation_get(rid=rid, unit=unit)
@@ -719,15 +812,21 @@ class NeutronApiSDNContext(context.SubordinateConfigContext):
                 if not plugin:
                     continue
                 ctxt['neutron_plugin'] = plugin
-                for key in defaults.keys():
+                for key in self.defaults.keys():
                     remote_value = rdata.get(key)
-                    ctxt_key = defaults[key]['templ_key']
+                    ctxt_key = self.defaults[key]['templ_key']
                     if remote_value:
                         ctxt[ctxt_key] = remote_value
+                    elif self.defaults[key]['value']:
+                        ctxt[ctxt_key] = self.defaults[key]['value']
                     else:
-                        ctxt[ctxt_key] = defaults[key]['value']
+                        # Do not set empty values
+                        pass
                 return ctxt
-        return ctxt
+        # Return empty dict when there are no related units, this will flag the
+        # context as incomplete and will allow end user messaging of missing
+        # relations
+        return {}
 
 
 class NeutronApiSDNConfigFileContext(context.OSContextGenerator):
@@ -740,7 +839,12 @@ class NeutronApiSDNConfigFileContext(context.OSContextGenerator):
                 neutron_server_plugin_conf = rdata.get('neutron-plugin-config')
                 if neutron_server_plugin_conf:
                     return {'config': neutron_server_plugin_conf}
-        return {'config': '/etc/neutron/plugins/ml2/ml2_conf.ini'}
+                else:
+                    return {'config': '/etc/neutron/plugins/ml2/ml2_conf.ini'}
+        # Return empty dict when there are no related units, this will flag the
+        # context as incomplete and will allow end user messaging of missing
+        # relations
+        return {}
 
 
 class NeutronApiApiPasteContext(context.OSContextGenerator):
