@@ -23,11 +23,48 @@ applications:
       flat-network-providers: physnet1
       neutron-security-groups: true
       openstack-origin: *openstack-origin
-  keystone:
+  kestone:
     charm: cs:~openstack-charmers/keystone
     num_units: 1
     options:
       openstack-origin: *openstack-origin
+  glnce:
+    harm: cs:glance
+    um_units: 1
+    ptions:
+     openstack-origin: *openstack-origin
+    o:
+     - '4'
+  netron-openvswitch:
+    harm: cs:neutron-openvswitch
+  netron-gateway:
+    harm: cs:neutron-gateway
+    um_units: 1
+    ptions:
+     bridge-mappings: physnet1:br-ex
+     openstack-origin: *openstack-origin
+    o:
+     - '5'
+  noa-cloud-controller:
+    harm: cs:nova-cloud-controller
+    um_units: 1
+    ptions:
+     network-manager: Neutron
+     openstack-origin: *openstack-origin
+    o:
+     - '6'
+  noa-compute:
+    harm: cs:nova-compute
+    um_units: 2
+    options:
+      config-flags: default_ephemeral_format=ext4
+      enable-live-migration: true
+      enable-resize: true
+      migration-auth-type: ssh
+      openstack-origin: *openstack-origin
+    to:
+      - '7'
+      - '8'
 relations:
   - - 'neutron-api:shared-db'
     - 'percona-cluster:shared-db'

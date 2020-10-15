@@ -1376,6 +1376,45 @@ class MidonetContextTest(CharmTestCase):
         self.assertEqual(expect, ctxt)
 
 
+class CiscoAciContextTest(CharmTestCase):
+
+    def setUp(self):
+        super(CiscoAciContextTest, self).setUp(context, TO_PATCH)
+        self.relation_get.side_effect = self.test_relation.get
+        self.config.side_effect = self.test_config.get
+        self.test_config.set('neutron-plugin', 'aci')
+
+    def tearDown(self):
+        super(CiscoAciContextTest, self).tearDown()
+
+    def test_ciscoaci_no_related_units(self):
+        self.related_units.return_value = []
+        ctxt = context.CiscoAciContext()()
+        expect = {}
+
+        self.assertEqual(expect, ctxt)
+
+    def test_ciscoaci_some_related_units(self):
+        self.related_units.return_value = ['aciunit1']
+        self.relation_ids.return_value = ['aciid1']
+        self.test_relation.set({'neutron_plugin': 'aci', 'aci_apic_system_id': 'openstack', 'aci_encap':'vxlan'})
+        ctxt = context.CiscoAciContext()()
+        expect = {'neutron_plugin': 'aci',
+                  'aci_apic_system_id': 'openstack',
+                  'aci_encap': 'vxlan'}
+
+        self.assertEqual(expect, ctxt)
+
+    def test_ciscoaci_wrong_plugin_name(self):
+        self.related_units.return_value = ['aciunit1']
+        self.relation_ids.return_value = ['aciid1']
+        self.test_relation.set({'neutron_plugin': 'aci1', 'aci_apic_system_id': 'openstack', 'aci_encap':'vxlan'})
+        ctxt = context.CiscoAciContext()()
+        expect = {}
+
+        self.assertEqual(expect, ctxt)
+
+
 class DesignateContextTest(CharmTestCase):
 
     def setUp(self):
