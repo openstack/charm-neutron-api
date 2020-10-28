@@ -522,6 +522,9 @@ class NeutronCCContext(context.NeutronContext):
                 'neutron.scheduler.dhcp_agent_scheduler.AZAwareWeightScheduler'
             )
             ctxt['dhcp_load_type'] = config('dhcp-load-type')
+            # AZLeastRoutersScheduler inherits from LeastRoutersScheduler and
+            # is available as of mitaka.
+            ctxt['router_scheduler_driver'] = config('router-scheduler-driver')
 
         extension_drivers = []
         if config('enable-ml2-port-security'):

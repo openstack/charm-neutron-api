@@ -376,6 +376,12 @@ options:
       namespace will be rescheduled only to L3 agents running in the 'dvr_snat'
       mode, while l3 agents in the 'dvr' mode will only host qrouter and fip
       namespaces.
+  router-scheduler-driver:
+    type: string
+    default: 'neutron.scheduler.l3_agent_scheduler.AZLeastRoutersScheduler'
+    description: |
+      The driver to use for router scheduling. In case of distributed routers
+      this will affect snat namespace scheduling.
   allow-automatic-dhcp-failover:
     type: boolean
     default: True
