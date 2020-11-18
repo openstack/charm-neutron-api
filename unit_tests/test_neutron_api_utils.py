@@ -43,7 +43,7 @@ TO_PATCH = [
     'add_source',
     'b64encode',
     'config',
-    'configure_installation_source',
+    'add_source',
     'get_os_codename_install_source',
     'log',
     'lsb_release',
@@ -366,9 +366,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         nutils.do_openstack_upgrade(configs)
         self.os_release.assert_called_with('neutron-common')
         self.assertTrue(self.log.called)
-        self.configure_installation_source.assert_called_with(
-            'cloud:trusty-juno'
-        )
+        self.add_source.assert_called_with('cloud:trusty-juno')
         self.apt_update.assert_called_with(fatal=True)
         dpkg_opts = [
             '--option', 'Dpkg::Options::=--force-confnew',
@@ -510,9 +508,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         nutils.do_openstack_upgrade(configs)
         self.os_release.assert_called_with('neutron-common')
         self.assertTrue(self.log.called)
-        self.configure_installation_source.assert_called_with(
-            'cloud:trusty-juno'
-        )
+        self.add_source.assert_called_with('cloud:trusty-juno')
         self.apt_update.assert_called_with(fatal=True)
         dpkg_opts = [
             '--option', 'Dpkg::Options::=--force-confnew',

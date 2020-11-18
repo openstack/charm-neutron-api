@@ -30,7 +30,6 @@ from charmhelpers.contrib.openstack.neutron import (
 from charmhelpers.contrib.openstack.utils import (
     os_release,
     get_os_codename_install_source,
-    configure_installation_source,
     incomplete_relation_data,
     is_unit_paused_set,
     make_assess_status_func,
@@ -650,9 +649,10 @@ def do_openstack_upgrade(configs):
     new_src = config('openstack-origin')
     new_os_rel = get_os_codename_install_source(new_src)
 
-    log('Performing OpenStack upgrade to %s.' % (new_os_rel))
+    log('Performing OpenStack upgrade to {}.'.format(new_os_rel))
 
-    configure_installation_source(new_src)
+    add_source(new_src)
+
     dpkg_opts = [
         '--option', 'Dpkg::Options::=--force-confnew',
         '--option', 'Dpkg::Options::=--force-confdef',
