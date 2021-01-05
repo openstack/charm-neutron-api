@@ -527,6 +527,9 @@ class NeutronCCContextTest(CharmTestCase):
                 'neutron.scheduler.dhcp_agent_scheduler'
                 '.AZAwareWeightScheduler'),
             'dhcp_load_type': 'networks',
+            'router_scheduler_driver': (
+                'neutron.scheduler.l3_agent_scheduler'
+                '.AZLeastRoutersScheduler'),
         }
         napi_ctxt = context.NeutronCCContext()
         self.maxDiff = None
