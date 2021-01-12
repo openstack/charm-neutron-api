@@ -346,7 +346,6 @@ class HAProxyContextTest(CharmTestCase):
         charmhelpers.contrib.openstack.context, 'get_address_in_network')
     @patch.object(charmhelpers.contrib.openstack.context, 'config')
     @patch.object(charmhelpers.contrib.openstack.context, 'local_unit')
-    @patch.object(charmhelpers.contrib.openstack.context, 'unit_get')
     @patch.object(charmhelpers.contrib.openstack.context, 'relation_get')
     @patch.object(charmhelpers.contrib.openstack.context, 'related_units')
     @patch.object(charmhelpers.contrib.openstack.context, 'relation_ids')
@@ -355,7 +354,7 @@ class HAProxyContextTest(CharmTestCase):
     @patch('builtins.__import__')
     @patch('builtins.open')
     def test_context_peers(self, _open, _import, _kv, _log, _rids, _runits,
-                           _rget, _uget, _lunit, _config,
+                           _rget, _lunit, _config,
                            _get_address_in_network, _get_netmask_for_address,
                            _mkdir, _get_relation_ip):
         unit_addresses = {
@@ -366,7 +365,6 @@ class HAProxyContextTest(CharmTestCase):
         _runits.return_value = ['neutron-api/0']
         _rget.return_value = unit_addresses['neutron-api-0']
         _lunit.return_value = "neutron-api/1"
-        _uget.return_value = unit_addresses['neutron-api-1']
         _get_relation_ip.return_value = unit_addresses['neutron-api-1']
         _config.return_value = None
         _get_address_in_network.return_value = None
@@ -1144,7 +1142,6 @@ class NeutronApiSDNContextTest(CharmTestCase):
                 'neutron_plugin_config': ('/etc/neutron/plugins/ml2/'
                                           'ml2_conf.ini'),
                 'neutron_plugin': 'ovs',
-                'sections': {},
             },
             defaults=['core_plugin', 'neutron_plugin_config'],
         )
@@ -1176,7 +1173,6 @@ class NeutronApiSDNContextTest(CharmTestCase):
                 'mechanism_drivers': 'ovn',
                 'tenant_network_types': 'geneve,gre,vlan,flat,local',
                 'neutron_security_groups': 'true',
-                'sections': {},
             },
             not_defaults=[
                 'api_extensions_path', 'core_plugin', 'neutron_plugin_config',
