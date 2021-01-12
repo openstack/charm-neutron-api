@@ -21,7 +21,6 @@ extra-bindings:
 series:
 - xenial
 - bionic
-- eoan
 - focal
 - trusty
 - groovy
