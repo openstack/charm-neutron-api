@@ -466,7 +466,7 @@ def determine_packages(source=None, openstack_release=None):
 
     for v in resource_map().values():
         packages.extend(v['services'])
-        if manage_plugin():
+        if manage_plugin() or config('neutron-plugin') == 'aci':
             pkgs = neutron_plugin_attribute(config('neutron-plugin'),
                                             'server_packages',
                                             'neutron')
@@ -570,14 +570,15 @@ def resource_map(release=None):
             resource_map[ML2_SRIOV_INI]['contexts'] = []
     else:
         plugin_ctxt_instance = neutron_api_context.NeutronApiSDNContext()
+        plugin = config('neutron-plugin')
         if (plugin_ctxt_instance.is_default('core_plugin') and
-                plugin_ctxt_instance.is_default('neutron_plugin_config')):
+                plugin_ctxt_instance.is_default('neutron_plugin_config') or config('neutron-plugin') == 'aci'):
             # The default core plugin is ML2.  If the driver provided by plugin
             # subordinate is built on top of ML2, the subordinate will have use
             # for influencing existing template variables as well as injecting
             # sections into the ML2 configuration file.
-            conf = neutron_plugin_attribute('ovs', 'config', 'neutron')
-            services = neutron_plugin_attribute('ovs', 'server_services',
+            conf = neutron_plugin_attribute(plugin, 'config', 'neutron')
+            services = neutron_plugin_attribute(plugin, 'server_services',
                                                 'neutron')
             if conf not in resource_map:
                 resource_map[conf] = {}
