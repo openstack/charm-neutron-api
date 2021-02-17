@@ -840,7 +840,7 @@ class NeutronApiSDNConfigFileContext(context.OSContextGenerator):
                 if neutron_server_plugin_conf:
                     return {'config': neutron_server_plugin_conf}
                 else:
-                    return {'config': '/etc/neutron/plugins/ml2/ml2_conf.ini'}
+                    return {'config': '/etc/neutron/plugins/ml2/ml2_conf_cisco_apic.ini'}
         # Return empty dict when there are no related units, this will flag the
         # context as incomplete and will allow end user messaging of missing
         # relations
