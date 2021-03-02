@@ -22,8 +22,8 @@ series:
 - xenial
 - bionic
 - focal
-- trusty
 - groovy
+- hirsute
 provides:
   nrpe-external-master:
     interface: nrpe-external-master
