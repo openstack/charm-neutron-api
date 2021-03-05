@@ -2,6 +2,7 @@ charm_name: neutron-api
 
 gate_bundles:
   - groovy-victoria
+  - focal-wallaby
   - focal-victoria
   - focal-ussuri
   - bionic-ussuri
@@ -9,23 +10,29 @@ gate_bundles:
   - bionic-stein
   - bionic-queens
   - xenial-mitaka
+
 smoke_bundles:
-  - bionic-ussuri
+  - focal-ussuri
+
 dev_bundles:
   - trusty-mitaka
   - xenial-ocata
   - xenial-pike
   - xenial-queens
   - bionic-rocky
+  - hirsute-wallaby
+
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
   - zaza.openstack.charm_tests.neutron.tests.NeutronCreateNetworkTest
   - zaza.openstack.charm_tests.neutron.tests.SecurityTest
   - zaza.openstack.charm_tests.policyd.tests.NeutronApiTests
+
 configure:
   - zaza.openstack.charm_tests.keystone.setup.add_demo_user
+
 tests_options:
   policyd:
     service: neutron
   force_deploy:
-    - groovy-victoria
+    - hirsute-wallaby
