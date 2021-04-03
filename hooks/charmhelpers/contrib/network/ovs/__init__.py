@@ -25,7 +25,7 @@ from charmhelpers.contrib.network.ovs import ovsdb as ch_ovsdb
 from charmhelpers.fetch import apt_install
 
 from charmhelpers.core.hookenv import (
-    log, WARNING, INFO, DEBUG
+    log, WARNING, INFO, DEBUG, charm_name
 )
 from charmhelpers.core.host import (
     CompareHostReleases,
@@ -666,3 +666,28 @@ def patch_ports_on_bridge(bridge):
         # reference to PEP479 just doing a return will provide a emtpy iterator
         # and not None.
         return
+
+
+def generate_external_ids(external_id_value=None):
+    """Generate external-ids dictionary that can be used to mark OVS bridges
+    and ports as managed by the charm.
+
+    :param external_id_value: Value of the external-ids entry.
+                              Note: 'managed' will be used if not specified.
+    :type external_id_value: Optional[str]
+    :returns: Dict with a single external-ids entry.
+              {
+                  'external-ids': {
+                      charm-``charm_name``: ``external_id_value``
+                  }
+              }
+    :rtype: Dict[str, Dict[str]]
+    """
+    external_id_key = "charm-{}".format(charm_name())
+    external_id_value = ('managed' if external_id_value is None
+                         else external_id_value)
+    return {
+        'external-ids': {
+            external_id_key: external_id_value
+        }
+    }
