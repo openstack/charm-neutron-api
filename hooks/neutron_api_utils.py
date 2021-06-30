@@ -102,14 +102,12 @@ BASE_PACKAGES = [
 # TODO: FWaaS was deprecated at Ussuri and will be removed during the W cycle
 KILO_PACKAGES = [
     'python-neutron-lbaas',
-    'python-neutron-fwaas',
     'python-neutron-vpnaas',
 ]
 
 PY3_PACKAGES = [
     'python3-neutron',
     'python3-neutron-lbaas',
-    'python3-neutron-fwaas',
     'python3-neutron-dynamic-routing',
     'python3-networking-hyperv',
     'python3-memcache',
@@ -130,6 +128,10 @@ PURGE_PACKAGES = [
 
 PURGE_EXTRA_PACKAGES_ON_TRAIN = [
     'python3-neutron-lbaas',
+]
+
+PURGE_EXTRA_PACKAGES_ON_VICTORIA = [
+    'python3-neutron-fwaas',
 ]
 
 VERSION_PACKAGE = 'neutron-common'
@@ -460,6 +462,8 @@ def determine_packages(source=None, openstack_release=None):
     packages = deepcopy(BASE_PACKAGES)
     if cmp_release >= 'rocky':
         packages.extend(PY3_PACKAGES)
+        if config('enable-fwaas') and cmp_release <= 'ussuri':
+            packages.append('python3-neutron-fwaas')
         if cmp_release >= 'train':
             packages.remove('python3-neutron-lbaas')
 
@@ -476,6 +480,8 @@ def determine_packages(source=None, openstack_release=None):
     if cmp_release < 'rocky':
         if cmp_release >= 'kilo':
             packages.extend(KILO_PACKAGES)
+            if config('enable-fwaas'):
+                packages.append('python-neutron-fwaas')
         if cmp_release >= 'ocata':
             packages.append('python-neutron-dynamic-routing')
         if cmp_release >= 'pike':
@@ -497,10 +503,14 @@ def determine_packages(source=None, openstack_release=None):
 def determine_purge_packages():
     '''Return a list of packages to purge for the current OS release'''
     cmp_os_source = CompareOpenStackReleases(os_release('neutron-common'))
-    if cmp_os_source >= 'train':
-        return PURGE_PACKAGES + PURGE_EXTRA_PACKAGES_ON_TRAIN
+    purge_pkgs = PURGE_PACKAGES
+    if cmp_os_source >= 'victoria':
+        purge_pkgs += PURGE_EXTRA_PACKAGES_ON_TRAIN
+        return purge_pkgs + PURGE_EXTRA_PACKAGES_ON_VICTORIA
+    elif cmp_os_source >= 'train':
+        return purge_pkgs + PURGE_EXTRA_PACKAGES_ON_TRAIN
     elif cmp_os_source >= 'rocky':
-        return PURGE_PACKAGES
+        return purge_pkgs
     return []
 
 
@@ -680,8 +690,10 @@ def do_openstack_upgrade(configs):
         if CompareOpenStackReleases(os_release('neutron-common')) < 'liberty':
             stamp_neutron_database(cur_os_rel)
         migrate_neutron_database(upgrade=True)
-        if CompareOpenStackReleases(new_os_rel) >= 'stein':
-            fwaas_migrate_v1_to_v2()
+        if config('enable-fwaas'):
+            if (CompareOpenStackReleases(new_os_rel) >= 'stein' and
+                    CompareOpenStackReleases(new_os_rel) <= 'ussuri'):
+                fwaas_migrate_v1_to_v2()
 
 
 # TODO: make an attribute of the context for shared usage

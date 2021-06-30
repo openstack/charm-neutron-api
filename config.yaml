@@ -22,6 +22,15 @@ options:
       such as thresholds and a destination log file are available in the neutron-openvswitch charm.
       Also, an neutron-openvswitch charm config option "firewall-driver" should be explicitly
       set to "openvswitch", since security group logging works only with OVS firewall driver now.
+  enable-fwaas:
+    type: boolean
+    default: True
+    description: |
+      Setting this to True will enable FWaasS (FWaaSv2 from Stein onwards).
+      This feature is disabled from Victoria onwards and will have no effect.
+      .
+      NOTE: Neutron FWaaS has been deprecated as of the OpenStack Ussuri
+      release and will be removed during the W cycle.
   enable-firewall-group-logging:
     type: boolean
     default: False

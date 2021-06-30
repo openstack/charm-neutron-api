@@ -401,6 +401,23 @@ class NeutronCCContext(context.NeutronContext):
 
         return settings
 
+    def get_service_plugins(self, cmp_release, plugin_defs):
+        if str(cmp_release) in plugin_defs:
+            return plugin_defs[str(cmp_release)]
+
+        # find the last available set of plugins.
+        last_available = None
+        for r in plugin_defs.keys():
+            if cmp_release > CompareOpenStackReleases(r):
+                if last_available:
+                    if (CompareOpenStackReleases(r) <
+                            CompareOpenStackReleases(last_available)):
+                        continue
+
+                last_available = r
+
+        return plugin_defs[last_available]
+
     def __call__(self):
         from neutron_api_utils import api_port
         ctxt = super(NeutronCCContext, self).__call__()
@@ -618,8 +635,9 @@ class NeutronCCContext(context.NeutronContext):
                 'train': ['router', 'firewall_v2', 'metering', 'segments',
                           ('neutron_dynamic_routing.'
                            'services.bgp.bgp_plugin.BgpPlugin')],
-                # TODO: FWaaS was deprecated at Ussuri and will be removed
-                # during the W cycle
+                'victoria': ['router', 'metering', 'segments',
+                             ('neutron_dynamic_routing.'
+                              'services.bgp.bgp_plugin.BgpPlugin')],
             }
             if cmp_release >= 'rocky' and cmp_release < 'train':
                 if ctxt.get('load_balancer_name', None):
@@ -629,13 +647,11 @@ class NeutronCCContext(context.NeutronContext):
                     # TODO(fnordahl): Remove fall-back in next charm release
                     service_plugins[release].append('lbaasv2')
 
-            # TODO: FWaaS was deprecated at Ussuri and will be removed
-            # during the W cycle
-            if cmp_release >= 'stein':
+            if cmp_release >= 'stein' and cmp_release <= 'ussuri':
                 ctxt['firewall_v2'] = True
 
-            ctxt['service_plugins'] = service_plugins.get(
-                release, service_plugins['stein'])
+            ctxt['service_plugins'] = self.get_service_plugins(
+                cmp_release, service_plugins)
 
             if is_nsg_logging_enabled() or is_nfg_logging_enabled():
                 ctxt['service_plugins'].append('log')

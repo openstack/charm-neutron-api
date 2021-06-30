@@ -433,6 +433,17 @@ class NeutronCCContextTest(CharmTestCase):
     def tearDown(self):
         super(NeutronCCContextTest, self).tearDown()
 
+    def test_get_service_plugins(self):
+        plugs = {"mitaka": "A",
+                 "queens": "B",
+                 "ussuri": "C"}
+        p = context.NeutronCCContext().get_service_plugins('train', plugs)
+        self.assertEquals(p, "B")
+        p = context.NeutronCCContext().get_service_plugins('ussuri', plugs)
+        self.assertEquals(p, "C")
+        p = context.NeutronCCContext().get_service_plugins('wallaby', plugs)
+        self.assertEquals(p, "C")
+
     @patch.object(context, 'NeutronLoadBalancerContext')
     @patch.object(context.NeutronCCContext, 'network_manager')
     @patch.object(context.NeutronCCContext, 'plugin')
@@ -776,7 +787,7 @@ class NeutronCCContextTest(CharmTestCase):
     def test_neutroncc_context_api_rel(self, _import, plugin, nm, nlb):
         nova_url = 'http://127.0.0.10'
         plugin.return_value = None
-        self.os_release.return_value = 'havana'
+        self.os_release.return_value = 'queens'
         self.related_units.return_value = ['unit1']
         self.relation_ids.return_value = ['rid2']
         self.test_relation.set({'nova_url': nova_url,
