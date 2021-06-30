@@ -138,7 +138,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         pkg_list = nutils.determine_packages()
         expect = deepcopy(nutils.BASE_PACKAGES)
         expect.extend(['neutron-server', 'neutron-plugin-ml2',
-                      'python-networking-hyperv'])
+                      'python-networking-hyperv', 'python-neutron-fwaas'])
         expect.extend(nutils.KILO_PACKAGES)
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
@@ -156,7 +156,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         ])
         expect.extend(nutils.KILO_PACKAGES)
         expect = [p for p in expect if not p.startswith('python-')]
-        expect.extend(nutils.PY3_PACKAGES)
+        expect.extend(nutils.PY3_PACKAGES + ['python3-neutron-fwaas'])
         expect.remove('python3-neutron-lbaas')
         self.assertEqual(sorted(pkg_list), sorted(expect))
 
@@ -171,7 +171,8 @@ class TestNeutronAPIUtils(CharmTestCase):
             'memcached',
             'neutron-server',
             'neutron-plugin-ml2',
-            'python-networking-hyperv'
+            'python-networking-hyperv',
+            'python3-neutron-fwaas',
         ])
         expect.extend(nutils.KILO_PACKAGES)
         expect = [p for p in expect if not p.startswith('python-')]
