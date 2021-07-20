@@ -416,7 +416,19 @@ class NeutronCCContext(context.NeutronContext):
 
                 last_available = r
 
-        return plugin_defs[last_available]
+        plugins = plugin_defs[last_available]
+
+        if not config('enable-fwaas'):
+            filtered = []
+            for plugin in plugins:
+                if plugin == 'firewall' or plugin == 'firewall_v2':
+                    continue
+
+                filtered.append(plugin)
+
+            plugins = filtered
+
+        return plugins
 
     def __call__(self):
         from neutron_api_utils import api_port
@@ -647,8 +659,9 @@ class NeutronCCContext(context.NeutronContext):
                     # TODO(fnordahl): Remove fall-back in next charm release
                     service_plugins[release].append('lbaasv2')
 
-            if cmp_release >= 'stein' and cmp_release <= 'ussuri':
-                ctxt['firewall_v2'] = True
+            if config("enable-fwaas"):
+                if cmp_release >= 'stein' and cmp_release <= 'ussuri':
+                    ctxt['firewall_v2'] = True
 
             ctxt['service_plugins'] = self.get_service_plugins(
                 cmp_release, service_plugins)
