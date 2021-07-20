@@ -434,15 +434,15 @@ class NeutronCCContextTest(CharmTestCase):
         super(NeutronCCContextTest, self).tearDown()
 
     def test_get_service_plugins(self):
-        plugs = {"mitaka": "A",
-                 "queens": "B",
-                 "ussuri": "C"}
+        plugs = {"mitaka": ["A"],
+                 "queens": ["B"],
+                 "ussuri": ["C"]}
         p = context.NeutronCCContext().get_service_plugins('train', plugs)
-        self.assertEquals(p, "B")
+        self.assertEquals(p, ["B"])
         p = context.NeutronCCContext().get_service_plugins('ussuri', plugs)
-        self.assertEquals(p, "C")
+        self.assertEquals(p, ["C"])
         p = context.NeutronCCContext().get_service_plugins('wallaby', plugs)
-        self.assertEquals(p, "C")
+        self.assertEquals(p, ["C"])
 
     @patch.object(context, 'NeutronLoadBalancerContext')
     @patch.object(context.NeutronCCContext, 'network_manager')
@@ -704,6 +704,69 @@ class NeutronCCContextTest(CharmTestCase):
                 'neutron.services.loadbalancer.plugin.LoadBalancerPlugin,'
                 'neutron.services.vpn.plugin.VPNDriverPlugin,'
                 'neutron.services.metering.metering_plugin.MeteringPlugin'),
+        }
+        napi_ctxt = context.NeutronCCContext()
+        with patch.object(napi_ctxt, '_ensure_packages'):
+            self.assertEqual(ctxt_data, napi_ctxt())
+
+    @patch.object(context, 'NeutronLoadBalancerContext')
+    @patch.object(context.NeutronCCContext, 'network_manager')
+    @patch.object(context.NeutronCCContext, 'plugin')
+    @patch('builtins.__import__')
+    def test_neutroncc_context_no_fwaas(self, _import, plugin, nm, nlb):
+        plugin.return_value = None
+        self.test_config.set('enable-l3ha', True)
+        self.test_config.set('enable-fwaas', False)
+        self.test_config.set('enable-qos', False)
+        self.test_config.set('enable-vlan-trunking', False)
+        self.test_config.set('overlay-network-type', 'gre')
+        self.test_config.set('neutron-plugin', 'ovs')
+        self.test_config.set('l2-population', False)
+        self.os_release.return_value = 'ussuri'
+        self.maxDiff = None
+        ctxt_data = {
+            'debug': True,
+            'enable_dvr': False,
+            'l3_ha': True,
+            'mechanism_drivers': 'openvswitch,hyperv',
+            'external_network': 'bob',
+            'global_physnet_mtu': 1500,
+            'enable_igmp_snooping': True,
+            'neutron_bind_port': self.api_port,
+            'verbose': True,
+            'l2_population': False,
+            'overlay_network_type': 'gre',
+            'path_mtu': 1500,
+            'tenant_network_types': 'gre,vlan,flat,local',
+            'max_l3_agents_per_router': 2,
+            'min_l3_agents_per_router': 2,
+            'network_scheduler_driver': ('neutron.scheduler.'
+                                         'dhcp_agent_scheduler.'
+                                         'AZAwareWeightScheduler'),
+            'allow_automatic_dhcp_failover': True,
+            'allow_automatic_l3agent_failover': False,
+            'dhcp_agents_per_network': 3,
+            'dhcp_load_type': 'networks',
+            'enable_sriov': False,
+            'quota_floatingip': 50,
+            'quota_health_monitors': -1,
+            'quota_member': -1,
+            'quota_network': 10,
+            'quota_pool': 10,
+            'quota_port': 50,
+            'quota_router': 10,
+            'quota_security_group': 10,
+            'quota_security_group_rule': 100,
+            'quota_subnet': 10,
+            'quota_vip': 10,
+            'vlan_ranges': 'physnet1:1000:2000',
+            'vni_ranges': '1001:2000',
+            'extension_drivers': 'port_security',
+            'router_scheduler_driver': ('neutron.scheduler.l3_agent_scheduler.'
+                                        'AZLeastRoutersScheduler'),
+            'service_plugins': ('router,metering,segments,'
+                                'neutron_dynamic_routing.services.bgp.'
+                                'bgp_plugin.BgpPlugin'),
         }
         napi_ctxt = context.NeutronCCContext()
         with patch.object(napi_ctxt, '_ensure_packages'):
