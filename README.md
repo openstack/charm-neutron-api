@@ -24,7 +24,7 @@ charm:
 
     juju deploy hacluster neutron-hacluster
     juju add-unit neutron-api
-    juju set neutron-api vip=<VIP FOR ACCESS>
+    juju config neutron-api vip=<VIP FOR ACCESS>
     juju add-relation neutron-hacluster neutron-api
 
 ## High availability
