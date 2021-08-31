@@ -272,6 +272,28 @@ class GeneralTests(CharmTestCase):
         self.test_config.set('enable-port-forwarding', True)
         self.assertFalse(context.is_port_forwarding_enabled())
 
+    def test_is_fwaas_enabled(self):
+        # Test pre-stein release
+        self.os_release.return_value = 'rocky'
+        self.test_config.set('enable-fwaas', True)
+        self.assertFalse(context.is_fwaas_enabled())
+        self.test_config.set('enable-fwaas', False)
+        self.assertFalse(context.is_fwaas_enabled())
+
+        # Test any series between stein - ussuri
+        self.os_release.return_value = 'ussuri'
+        self.test_config.set('enable-fwaas', True)
+        self.assertTrue(context.is_fwaas_enabled())
+        self.test_config.set('enable-fwaas', False)
+        self.assertFalse(context.is_fwaas_enabled())
+
+        # Test post-ussuri release
+        self.os_release.return_value = 'victoria'
+        self.test_config.set('enable-fwaas', True)
+        self.assertFalse(context.is_fwaas_enabled())
+        self.test_config.set('enable-fwaas', False)
+        self.assertFalse(context.is_fwaas_enabled())
+
 
 class IdentityServiceContext(CharmTestCase):
 
@@ -303,6 +325,8 @@ class IdentityServiceContext(CharmTestCase):
             'service_tenant': 'ten',
             'service_username': 'admin',
             'service_password': 'adminpass',
+            'internal_host': '127.0.0.4',
+            'internal_port': 5432,
         }
         _rget.return_value = id_data
         ids_ctxt = context.IdentityServiceContext()

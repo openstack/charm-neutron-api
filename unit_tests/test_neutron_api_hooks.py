@@ -91,6 +91,7 @@ TO_PATCH = [
     'is_nsg_logging_enabled',
     'is_nfg_logging_enabled',
     'is_port_forwarding_enabled',
+    'is_fwaas_enabled',
     'remove_old_packages',
     'services',
     'service_restart',
@@ -144,6 +145,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         self.is_nsg_logging_enabled.return_value = False
         self.is_nfg_logging_enabled.return_value = False
         self.is_port_forwarding_enabled.return_value = False
+        self.is_fwaas_enabled.return_value = True
 
     def _fake_relids(self, rel_name):
         return [randrange(100) for _count in range(2)]
@@ -542,6 +544,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
             'enable-port-forwarding': False,
+            'enable-fwaas': True,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -588,6 +591,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'enable-nsg-logging': True,
             'enable-nfg-logging': False,
             'enable-port-forwarding': False,
+            'enable-fwaas': True,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -640,6 +644,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'enable-nsg-logging': False,
             'enable-nfg-logging': True,
             'enable-port-forwarding': False,
+            'enable-fwaas': True,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -691,6 +696,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
             'enable-port-forwarding': True,
+            'enable-fwaas': True,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -742,6 +748,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
             'enable-port-forwarding': False,
+            'enable-fwaas': True,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -788,6 +795,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
             'enable-port-forwarding': False,
+            'enable-fwaas': True,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -836,6 +844,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
             'enable-port-forwarding': False,
+            'enable-fwaas': True,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
@@ -883,6 +892,7 @@ class NeutronAPIHooksTests(CharmTestCase):
             'enable-nsg-logging': False,
             'enable-nfg-logging': False,
             'enable-port-forwarding': False,
+            'enable-fwaas': True,
             'global-physnet-mtu': 1500,
             'physical-network-mtus': None,
         }
