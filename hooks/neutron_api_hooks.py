@@ -585,6 +585,9 @@ def neutron_plugin_api_relation_joined(rid=None):
         'service_tenant': identity_ctxt.get('admin_tenant_name'),
         'service_username': identity_ctxt.get('admin_user'),
         'service_password': identity_ctxt.get('admin_password'),
+        'internal_host': identity_ctxt.get('internal_host'),
+        'internal_port': identity_ctxt.get('internal_port'),
+        'internal_protocol': identity_ctxt.get('internal_protocol'),
         'region': config('region'),
     })
 
