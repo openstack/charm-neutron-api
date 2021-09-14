@@ -25,7 +25,10 @@ import socket
 import time
 
 from base64 import b64decode
-from subprocess import check_call, CalledProcessError
+from subprocess import (
+    check_call,
+    check_output,
+    CalledProcessError)
 
 import six
 
@@ -1781,6 +1784,10 @@ class NeutronAPIContext(OSContextGenerator):
                 'rel_key': 'enable-port-forwarding',
                 'default': False,
             },
+            'enable_fwaas': {
+                'rel_key': 'enable-fwaas',
+                'default': False,
+            },
             'global_physnet_mtu': {
                 'rel_key': 'global-physnet-mtu',
                 'default': 1500,
@@ -1814,6 +1821,11 @@ class NeutronAPIContext(OSContextGenerator):
 
         if ctxt['enable_port_forwarding']:
             l3_extension_plugins.append('port_forwarding')
+
+        if ctxt['enable_fwaas']:
+            l3_extension_plugins.append('fwaas_v2')
+            if ctxt['enable_nfg_logging']:
+                l3_extension_plugins.append('fwaas_v2_log')
 
         ctxt['l3_extension_plugins'] = l3_extension_plugins
 
@@ -2578,14 +2590,22 @@ class OVSDPDKDeviceContext(OSContextGenerator):
         return format(mask, '#04x')
 
     def socket_memory(self):
-        """Formatted list of socket memory configuration per NUMA node
+        """Formatted list of socket memory configuration per socket.
 
-        :returns: socket memory configuration per NUMA node
+        :returns: socket memory configuration per socket.
         :rtype: str
         """
+        lscpu_out = check_output(
+            ['lscpu', '-p=socket']).decode('UTF-8').strip()
+        sockets = set()
+        for line in lscpu_out.split('\n'):
+            try:
+                sockets.add(int(line))
+            except ValueError:
+                # lscpu output is headed by comments so ignore them.
+                pass
         sm_size = config('dpdk-socket-memory')
-        node_regex = '/sys/devices/system/node/node*'
-        mem_list = [str(sm_size) for _ in glob.glob(node_regex)]
+        mem_list = [str(sm_size) for _ in sockets]
         if mem_list:
             return ','.join(mem_list)
         else:

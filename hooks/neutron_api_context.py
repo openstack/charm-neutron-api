@@ -27,6 +27,7 @@ from charmhelpers.core.hookenv import (
     log,
     DEBUG,
     ERROR,
+    WARNING,
 )
 from charmhelpers.contrib.openstack import context
 from charmhelpers.contrib.hahelpers.cluster import (
@@ -275,6 +276,28 @@ def is_port_forwarding_enabled():
             log("The port forwarding option is"
                 "only supported on Rocky or later",
                 ERROR)
+            return False
+
+        return True
+
+    return False
+
+
+def is_fwaas_enabled():
+    """
+    Check if Firewall as a service feature should be enabled.
+
+    returns: True if enable-fwaas config item is True,
+        otherwise False.
+    :rtype: boolean
+    """
+    if config('enable-fwaas'):
+
+        cmp_release = CompareOpenStackReleases(os_release('neutron-server'))
+        if cmp_release < 'stein' or cmp_release > 'ussuri':
+            log("The fwaas option is set to true but will be ignored "
+                "and disabled for releases outside of Stein to Ussuri.",
+                WARNING)
             return False
 
         return True
