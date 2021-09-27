@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Limited.
+# Copyright 2014-2021 Canonical Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -655,7 +655,7 @@ def patch_ports_on_bridge(bridge):
                 yield(Patch(this_end, other_end))
             # We expect one result and it is ok if it turns out to be a port
             # for a different bridge. However we need a break here to satisfy
-            # the for/else check which is in place to detect interface refering
+            # the for/else check which is in place to detect interface referring
             # to non-existent port.
             break
         else:
@@ -663,7 +663,7 @@ def patch_ports_on_bridge(bridge):
                              'not exist.'.format(interface['name']))
     else:
         # Allow our caller to handle no patch ports found gracefully, in
-        # reference to PEP479 just doing a return will provide a emtpy iterator
+        # reference to PEP479 just doing a return will provide a empty iterator
         # and not None.
         return
 

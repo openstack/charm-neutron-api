@@ -20,7 +20,9 @@ dev_bundles:
   - xenial-pike
   - xenial-queens
   - bionic-rocky
+  - focal-xena
   - hirsute-wallaby
+  - impish-xena
 
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
@@ -35,4 +37,5 @@ tests_options:
   policyd:
     service: neutron
   force_deploy:
-    - hirsute-wallaby
+    - groovy-victoria
+    - impish-xena

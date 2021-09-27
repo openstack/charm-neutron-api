@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Limited.
+# Copyright 2014-2021 Canonical Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1367,7 +1367,7 @@ class NeutronPortContext(OSContextGenerator):
         mac_regex = re.compile(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', re.I)
         for entry in ports:
             if re.match(mac_regex, entry):
-                # NIC is in known NICs and does NOT hace an IP address
+                # NIC is in known NICs and does NOT have an IP address
                 if entry in hwaddr_to_nic and not hwaddr_to_ip[entry]:
                     # If the nic is part of a bridge then don't use it
                     if is_bridge_member(hwaddr_to_nic[entry]):
@@ -2397,6 +2397,12 @@ class DHCPAgentContext(OSContextGenerator):
             ctxt['enable_metadata_network'] = True
             ctxt['enable_isolated_metadata'] = True
 
+        ctxt['append_ovs_config'] = False
+        cmp_release = CompareOpenStackReleases(
+            os_release('neutron-common', base='icehouse'))
+        if cmp_release >= 'queens' and config('enable-dpdk'):
+            ctxt['append_ovs_config'] = True
+
         return ctxt
 
     @staticmethod
@@ -2588,12 +2594,30 @@ class OVSDPDKDeviceContext(OSContextGenerator):
         :returns: hex formatted CPU mask
         :rtype: str
         """
-        num_cores = config('dpdk-socket-cores')
-        mask = 0
+        return self.cpu_masks()['dpdk_lcore_mask']
+
+    def cpu_masks(self):
+        """Get hex formatted CPU masks
+
+        The mask is based on using the first config:dpdk-socket-cores
+        cores of each NUMA node in the unit, followed by the
+        next config:pmd-socket-cores
+
+        :returns: Dict of hex formatted CPU masks
+        :rtype: Dict[str, str]
+        """
+        num_lcores = config('dpdk-socket-cores')
+        pmd_cores = config('pmd-socket-cores')
+        lcore_mask = 0
+        pmd_mask = 0
         for cores in self._numa_node_cores().values():
-            for core in cores[:num_cores]:
-                mask = mask | 1 << core
-        return format(mask, '#04x')
+            for core in cores[:num_lcores]:
+                lcore_mask = lcore_mask | 1 << core
+            for core in cores[num_lcores:][:pmd_cores]:
+                pmd_mask = pmd_mask | 1 << core
+        return {
+            'pmd_cpu_mask': format(pmd_mask, '#04x'),
+            'dpdk_lcore_mask': format(lcore_mask, '#04x')}
 
     def socket_memory(self):
         """Formatted list of socket memory configuration per socket.
@@ -2676,7 +2700,7 @@ class OVSDPDKDeviceContext(OSContextGenerator):
 
 
 class BridgePortInterfaceMap(object):
-    """Build a map of bridge ports and interaces from charm configuration.
+    """Build a map of bridge ports and interfaces from charm configuration.
 
     NOTE: the handling of this detail in the charm is pre-deprecated.
 
@@ -3125,7 +3149,7 @@ class SRIOVContext(OSContextGenerator):
             actual = min(int(requested), int(device.sriov_totalvfs))
             if actual < int(requested):
                 log('Requested VFs ({}) too high for device {}. Falling back '
-                    'to value supprted by device: {}'
+                    'to value supported by device: {}'
                     .format(requested, device.interface_name,
                             device.sriov_totalvfs),
                     level=WARNING)
