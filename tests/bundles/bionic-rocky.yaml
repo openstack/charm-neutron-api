@@ -6,15 +6,17 @@ series: &series bionic
 applications:
   percona-cluster:
     constraints: mem=3072M
-    charm: cs:~openstack-charmers-next/percona-cluster
+    charm: cs:~openstack-charmers/percona-cluster
     num_units: 1
     options:
       source: *openstack-origin
+    channel: candidate
   rabbitmq-server:
-    charm: cs:~openstack-charmers-next/rabbitmq-server
+    charm: cs:~openstack-charmers/rabbitmq-server
     num_units: 1
     options:
       source: *openstack-origin
+    channel: candidate
   neutron-api:
     charm: ../../../neutron-api
     series: *series
@@ -24,10 +26,11 @@ applications:
       neutron-security-groups: true
       openstack-origin: *openstack-origin
   keystone:
-    charm: cs:~openstack-charmers-next/keystone
+    charm: cs:~openstack-charmers/keystone
     num_units: 1
     options:
       openstack-origin: *openstack-origin
+    channel: candidate
 relations:
   - - 'neutron-api:shared-db'
     - 'percona-cluster:shared-db'
