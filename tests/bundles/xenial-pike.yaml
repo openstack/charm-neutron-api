@@ -10,13 +10,11 @@ applications:
     num_units: 1
     options:
       source: *openstack-origin
-    channel: candidate
   rabbitmq-server:
     charm: cs:~openstack-charmers/rabbitmq-server
     num_units: 1
     options:
       source: *openstack-origin
-    channel: candidate
   neutron-api:
     charm: ../../../neutron-api
     series: *series
@@ -30,7 +28,6 @@ applications:
     num_units: 1
     options:
       openstack-origin: *openstack-origin
-    channel: candidate
 relations:
   - - 'neutron-api:shared-db'
     - 'percona-cluster:shared-db'
