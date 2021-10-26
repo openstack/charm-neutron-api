@@ -351,13 +351,15 @@ class TestNeutronAPIUtils(CharmTestCase):
             self.assertTrue(self.b64encode.called)
 
     @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils, 'configure_installation_source')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
     @patch.object(nutils, 'migrate_neutron_database')
     @patch.object(nutils, 'stamp_neutron_database')
     def test_do_openstack_upgrade(self,
                                   stamp_neutron_db, migrate_neutron_db,
-                                  gsrc, mock_manage_plugin):
+                                  gsrc, config_install_src,
+                                  mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'icehouse'
         self.config.side_effect = self.test_config.get
@@ -368,7 +370,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         nutils.do_openstack_upgrade(configs)
         self.os_release.assert_called_with('neutron-common')
         self.assertTrue(self.log.called)
-        self.add_source.assert_called_with('cloud:trusty-juno')
+        config_install_src.assert_called_with('cloud:trusty-juno')
         self.apt_update.assert_called_with(fatal=True)
         dpkg_opts = [
             '--option', 'Dpkg::Options::=--force-confnew',
@@ -389,13 +391,15 @@ class TestNeutronAPIUtils(CharmTestCase):
         migrate_neutron_db.assert_has_calls(calls)
 
     @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils, 'configure_installation_source')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
     @patch.object(nutils, 'migrate_neutron_database')
     @patch.object(nutils, 'stamp_neutron_database')
     def test_do_openstack_upgrade_liberty(self,
                                           stamp_neutron_db, migrate_neutron_db,
-                                          gsrc, mock_manage_plugin):
+                                          gsrc, config_install_src,
+                                          mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'liberty'
         self.config.side_effect = self.test_config.get
@@ -407,6 +411,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         self.assertFalse(stamp_neutron_db.called)
 
     @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils, 'configure_installation_source')
     @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
@@ -417,6 +422,7 @@ class TestNeutronAPIUtils(CharmTestCase):
                                         migrate_neutron_db,
                                         gsrc,
                                         fwaas_migrate_v1_to_v2,
+                                        config_install_src,
                                         mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'rocky'
@@ -435,6 +441,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         configs.write_all.assert_called_once_with()
 
     @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils, 'configure_installation_source')
     @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
@@ -445,6 +452,7 @@ class TestNeutronAPIUtils(CharmTestCase):
                                         migrate_neutron_db,
                                         gsrc,
                                         fwaas_migrate_v1_to_v2,
+                                        config_install_src,
                                         mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'stein'
@@ -463,6 +471,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         configs.write_all.assert_called_once_with()
 
     @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils, 'configure_installation_source')
     @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
@@ -473,6 +482,7 @@ class TestNeutronAPIUtils(CharmTestCase):
                                         migrate_neutron_db,
                                         gsrc,
                                         fwaas_migrate_v1_to_v2,
+                                        config_install_src,
                                         mock_manage_plugin):
         self.is_elected_leader.return_value = True
         self.os_release.return_value = 'train'
@@ -492,6 +502,40 @@ class TestNeutronAPIUtils(CharmTestCase):
         configs.write_all.assert_called_once_with()
 
     @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils, 'configure_installation_source')
+    @patch.object(nutils, 'fwaas_migrate_v1_to_v2')
+    @patch.object(nutils, 'migrate_neutron_database')
+    @patch.object(nutils, 'stamp_neutron_database')
+    def test_do_openstack_upgrade_mirror(self,
+                                         stamp_neutron_db,
+                                         migrate_neutron_db,
+                                         fwaas_migrate_v1_to_v2,
+                                         config_install_src,
+                                         mock_manage_plugin):
+        self.is_elected_leader.return_value = True
+        self.os_release.return_value = 'train'
+        self.config.side_effect = self.test_config.get
+        origin = ("deb http://example.org/repository/standalone/uca "
+                  "bionic-updates-train main|GPGKEY")
+        self.test_config.set('openstack-origin', origin)
+        # Rather hacky way of calling through to get_os_codename_install_source
+        # without having to rework a bunch of unit tests since this is mocked
+        # globally
+        self.get_os_codename_install_source.side_effect =\
+            charmhelpers.contrib.openstack.utils.get_os_codename_install_source
+        self.filter_missing_packages.return_value = ['python-neutron']
+        configs = MagicMock()
+        nutils.do_openstack_upgrade(configs)
+        self.apt_purge.assert_called_with(['python-neutron'], fatal=True)
+        self.apt_autoremove.assert_called_with(purge=True, fatal=True)
+        self.filter_missing_packages.assert_called_with(
+            nutils.PURGE_PACKAGES + nutils.PURGE_EXTRA_PACKAGES_ON_TRAIN)
+        self.assertFalse(stamp_neutron_db.called)
+        fwaas_migrate_v1_to_v2.assert_called_once_with()
+        configs.write_all.assert_called_once_with()
+
+    @patch.object(nutils, 'manage_plugin')
+    @patch.object(nutils, 'configure_installation_source')
     @patch.object(charmhelpers.contrib.openstack.utils,
                   'get_os_codename_install_source')
     @patch.object(nutils, 'migrate_neutron_database')
@@ -500,6 +544,7 @@ class TestNeutronAPIUtils(CharmTestCase):
                                             stamp_neutron_db,
                                             migrate_neutron_db,
                                             gsrc,
+                                            config_install_src,
                                             mock_manage_plugin):
         self.is_elected_leader.return_value = False
         self.os_release.return_value = 'icehouse'
@@ -511,7 +556,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         nutils.do_openstack_upgrade(configs)
         self.os_release.assert_called_with('neutron-common', reset_cache=True)
         self.assertTrue(self.log.called)
-        self.add_source.assert_called_with('cloud:trusty-juno')
+        config_install_src.assert_called_with('cloud:trusty-juno')
         self.apt_update.assert_called_with(fatal=True)
         dpkg_opts = [
             '--option', 'Dpkg::Options::=--force-confnew',

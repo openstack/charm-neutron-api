@@ -30,6 +30,7 @@ from charmhelpers.contrib.openstack.neutron import (
 from charmhelpers.contrib.openstack.utils import (
     os_release,
     get_os_codename_install_source,
+    configure_installation_source,
     incomplete_relation_data,
     is_unit_paused_set,
     make_assess_status_func,
@@ -666,7 +667,7 @@ def do_openstack_upgrade(configs):
 
     log('Performing OpenStack upgrade to {}.'.format(new_os_rel))
 
-    add_source(new_src)
+    configure_installation_source(new_src)
 
     dpkg_opts = [
         '--option', 'Dpkg::Options::=--force-confnew',
@@ -675,7 +676,7 @@ def do_openstack_upgrade(configs):
     apt_update(fatal=True)
     apt_upgrade(options=dpkg_opts, fatal=True, dist=True)
     reset_os_release()
-    pkgs = determine_packages(new_src)
+    pkgs = determine_packages(new_src, openstack_release=new_os_rel)
     # Sort packages just to make unit tests easier
     pkgs.sort()
     apt_install(packages=pkgs,
