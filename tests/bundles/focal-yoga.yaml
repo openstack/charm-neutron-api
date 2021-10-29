@@ -1,7 +1,7 @@
 variables:
-  openstack-origin: &openstack-origin distro
+  openstack-origin: &openstack-origin cloud:focal-yoga
 
-series: &series groovy
+series: &series focal
 
 applications:
   keystone-mysql-router:

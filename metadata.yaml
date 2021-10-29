@@ -19,7 +19,6 @@ extra-bindings:
   admin:
   internal:
 series:
-- xenial
 - bionic
 - focal
 - groovy
