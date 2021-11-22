@@ -52,6 +52,7 @@ EXTENSION_DRIVER_PORT_SECURITY = 'port_security'
 EXTENSION_DRIVER_DNS = 'dns'
 EXTENSION_DRIVER_DNS_DOMAIN_PORTS = 'dns_domain_ports'
 EXTENSION_DRIVER_QOS = 'qos'
+EXTENSION_DRIVER_UPLINK_STATUS_PROP = 'uplink_status_propagation'
 
 ETC_NEUTRON = '/etc/neutron'
 
@@ -606,6 +607,9 @@ class NeutronCCContext(context.NeutronContext):
 
         if is_qos_requested_and_valid():
             extension_drivers.append(EXTENSION_DRIVER_QOS)
+
+        if config('uplink-status-propagation') and cmp_release >= 'stein':
+            extension_drivers.append(EXTENSION_DRIVER_UPLINK_STATUS_PROP)
 
         if extension_drivers:
             ctxt['extension_drivers'] = ','.join(extension_drivers)
