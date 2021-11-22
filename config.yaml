@@ -800,6 +800,13 @@ options:
     description: |
       If True, on Ussuri or later, igmp snooping will be set on OVS and OVN
       control plane will learn about multicast traffic going on in the cluster.
+  uplink-status-propagation:
+    type: boolean
+    default: False
+    description: |
+      If True, on Stein or later attribute 'propagate_uplink_status' will be
+      available to port. This attribute can be implemented for VF port to
+      indicate if the VF link state should follow the state of the PF.
   enable-network-segment-range:
     type: boolean
     default: False
