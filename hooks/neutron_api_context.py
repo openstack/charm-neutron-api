@@ -283,17 +283,28 @@ def is_port_forwarding_enabled():
     return False
 
 
-def is_fwaas_enabled():
+def is_fwaas_enabled(cmp_release=None):
     """
     Check if Firewall as a service feature should be enabled.
 
-    returns: True if enable-fwaas config item is True,
-        otherwise False.
+    This is True if both the corresponding config option is True and the
+    provided OpenStack release supports this feature.
+
+    :param cmp_release: OpenStack release to assess. Defaults to current
+                        release.
+    :type cmp_release: CompareOpenStackReleases
     :rtype: boolean
     """
     if config('enable-fwaas'):
 
-        cmp_release = CompareOpenStackReleases(os_release('neutron-server'))
+        if cmp_release is None:
+            # NOTE(lourot): This may be called from the config-changed hook,
+            # while performing an OpenStack upgrade. Thus we need to use
+            # reset_cache, otherwise os_release() won't return the new
+            # OpenStack release we have just upgraded to.
+            cmp_release = CompareOpenStackReleases(
+                os_release('neutron-server', reset_cache=True))
+
         if cmp_release < 'stein' or cmp_release > 'ussuri':
             log("The fwaas option is set to true but will be ignored "
                 "and disabled for releases outside of Stein to Ussuri.",
@@ -441,7 +452,7 @@ class NeutronCCContext(context.NeutronContext):
 
         plugins = plugin_defs[last_available]
 
-        if not config('enable-fwaas'):
+        if not is_fwaas_enabled(cmp_release):
             filtered = []
             for plugin in plugins:
                 if plugin == 'firewall' or plugin == 'firewall_v2':
@@ -499,8 +510,14 @@ class NeutronCCContext(context.NeutronContext):
         ctxt['tenant_network_types'] = self.neutron_tenant_network_types
         ctxt['overlay_network_type'] = self.neutron_overlay_network_type
         ctxt['external_network'] = config('neutron-external-network')
-        release = os_release('neutron-server')
+
+        # NOTE(lourot): This may be called from the config-changed hook, while
+        # performing an OpenStack upgrade. Thus we need to use reset_cache,
+        # otherwise os_release() won't return the new OpenStack release we
+        # have just upgraded to.
+        release = os_release('neutron-server', reset_cache=True)
         cmp_release = CompareOpenStackReleases(release)
+
         ctxt['enable_igmp_snooping'] = self.neutron_igmp_snoop
         if config('neutron-plugin') == 'vsp' and cmp_release < 'newton':
             _config = config()
@@ -682,9 +699,8 @@ class NeutronCCContext(context.NeutronContext):
                     # TODO(fnordahl): Remove fall-back in next charm release
                     service_plugins[release].append('lbaasv2')
 
-            if config("enable-fwaas"):
-                if cmp_release >= 'stein' and cmp_release <= 'ussuri':
-                    ctxt['firewall_v2'] = True
+            if is_fwaas_enabled(cmp_release):
+                ctxt['firewall_v2'] = True
 
             ctxt['service_plugins'] = self.get_service_plugins(
                 cmp_release, service_plugins)

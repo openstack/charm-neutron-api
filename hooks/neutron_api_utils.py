@@ -502,7 +502,12 @@ def determine_packages(source=None, openstack_release=None):
 
 def determine_purge_packages():
     '''Return a list of packages to purge for the current OS release'''
-    cmp_os_source = CompareOpenStackReleases(os_release('neutron-common'))
+    # NOTE(lourot): This may be called from the config-changed hook, while
+    # performing an OpenStack upgrade. Thus we need to use reset_cache,
+    # otherwise os_release() won't return the new OpenStack release we have
+    # just upgraded to.
+    cmp_os_source = CompareOpenStackReleases(os_release('neutron-common',
+                                                        reset_cache=True))
     purge_pkgs = PURGE_PACKAGES
     if cmp_os_source >= 'victoria':
         purge_pkgs += PURGE_EXTRA_PACKAGES_ON_TRAIN
