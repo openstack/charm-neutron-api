@@ -49,6 +49,7 @@ TO_PATCH = [
     'lsb_release',
     'neutron_plugin_attribute',
     'os_release',
+    'reset_os_release',
     'service_restart',
     'subprocess',
     'is_elected_leader',
@@ -376,6 +377,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         self.apt_upgrade.assert_called_with(options=dpkg_opts,
                                             fatal=True,
                                             dist=True)
+        self.reset_os_release.assert_called_with()
         pkgs = nutils.determine_packages()
         pkgs.sort()
         self.apt_install.assert_called_with(packages=pkgs,
@@ -507,7 +509,7 @@ class TestNeutronAPIUtils(CharmTestCase):
         self.get_os_codename_install_source.return_value = 'juno'
         configs = MagicMock()
         nutils.do_openstack_upgrade(configs)
-        self.os_release.assert_called_with('neutron-common')
+        self.os_release.assert_called_with('neutron-common', reset_cache=True)
         self.assertTrue(self.log.called)
         self.add_source.assert_called_with('cloud:trusty-juno')
         self.apt_update.assert_called_with(fatal=True)
