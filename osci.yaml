@@ -3,17 +3,8 @@
       - charm-yoga-unit-jobs
       - charm-yoga-functional-jobs
       - charm-xena-functional-jobs
-      # hirsute-wallaby fails due to:
-      # https://bugs.launchpad.net/charm-neutron-api/+bug/1933338
-      # - charm-wallaby-functional-jobs
+      - charm-wallaby-functional-jobs
       - charm-victoria-functional-jobs
       - charm-ussuri-functional-jobs
       - charm-stein-functional-jobs
       - charm-queens-functional-jobs
-    check:
-      jobs:
-        # hirsute-wallaby fails due to:
-        # https://bugs.launchpad.net/charm-neutron-api/+bug/1933338
-        - focal-wallaby
-        - hirsute-wallaby:
-            voting: false
