@@ -5,22 +5,25 @@ series: &series focal
 
 applications:
   keystone-mysql-router:
-    charm: cs:~openstack-charmers-next/mysql-router
+    charm: ch:mysql-router
+    channel: latest/edge
   neutron-mysql-router:
-    charm: cs:~openstack-charmers-next/mysql-router
+    charm: ch:mysql-router
+    channel: latest/edge
   mysql-innodb-cluster:
-    charm: cs:~openstack-charmers-next/mysql-innodb-cluster
+    charm: ch:mysql-innodb-cluster
     num_units: 3
     options:
       source: *openstack-origin
+    channel: latest/edge
   rabbitmq-server:
-    charm: cs:~openstack-charmers-next/rabbitmq-server
+    charm: ch:rabbitmq-server
     num_units: 1
     options:
       source: *openstack-origin
+    channel: latest/edge
   neutron-api:
-    charm: cs:~openstack-charmers-next/neutron-api
-    series: *series
+    charm: ../../
     num_units: 1
     options:
       manage-neutron-plugin-legacy-mode: True
@@ -28,10 +31,11 @@ applications:
       neutron-security-groups: true
       openstack-origin: *openstack-origin
   keystone:
-    charm: cs:~openstack-charmers-next/keystone
+    charm: ch:keystone
     num_units: 1
     options:
       openstack-origin: *openstack-origin
+    channel: latest/edge
 relations:
   - - neutron-api:amqp
     - rabbitmq-server:amqp

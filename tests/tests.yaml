@@ -1,22 +1,13 @@
 charm_name: neutron-api
 
 gate_bundles:
-  - bionic-queens
-  - bionic-stein
-  - bionic-ussuri
-  - focal-ussuri
-  - focal-victoria
-  - focal-wallaby
   - focal-xena
-  - hirsute-wallaby
   - impish-xena
 
 smoke_bundles:
-  - focal-ussuri
+  - focal-xena
 
 dev_bundles:
-  - bionic-rocky
-  - bionic-train
   - focal-yoga
   - jammy-yoga
 
@@ -33,6 +24,5 @@ tests_options:
   policyd:
     service: neutron
   force_deploy:
-    - hirsute-wallaby
     - impish-xena
     - jammy-yoga

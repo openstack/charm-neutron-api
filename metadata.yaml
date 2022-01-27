@@ -19,10 +19,7 @@ extra-bindings:
   admin:
   internal:
 series:
-- bionic
 - focal
-- groovy
-- hirsute
 - impish
 provides:
   nrpe-external-master:
