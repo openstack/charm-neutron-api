@@ -294,6 +294,21 @@ class GeneralTests(CharmTestCase):
         self.test_config.set('enable-fwaas', False)
         self.assertFalse(context.is_fwaas_enabled())
 
+    def test_is_network_segment_range_enabled(self):
+        # Test pre-stein release
+        self.os_release.return_value = 'rocky'
+        self.test_config.set('enable-network-segment-range', True)
+        self.assertFalse(context.is_network_segment_range_enabled())
+        self.test_config.set('enable-network-segment-range', False)
+        self.assertFalse(context.is_network_segment_range_enabled())
+
+        # Test stein release
+        self.os_release.return_value = 'stein'
+        self.test_config.set('enable-network-segment-range', True)
+        self.assertTrue(context.is_network_segment_range_enabled())
+        self.test_config.set('enable-network-segment-range', False)
+        self.assertFalse(context.is_network_segment_range_enabled())
+
 
 class IdentityServiceContext(CharmTestCase):
 

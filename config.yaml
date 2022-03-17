@@ -807,3 +807,9 @@ options:
       If True, on Stein or later attribute 'propagate_uplink_status' will be
       available to port. This attribute can be implemented for VF port to
       indicate if the VF link state should follow the state of the PF.
+  enable-network-segment-range:
+    type: boolean
+    default: False
+    description: |
+      Setting this to True will enable network segment ranges (Stein and
+      later).

@@ -317,6 +317,27 @@ def is_fwaas_enabled(cmp_release=None):
     return False
 
 
+def is_network_segment_range_enabled():
+    """
+    Check if Network segment ranges feature should be enabled.
+
+    returns: True if enable-network-segment-range config is True,
+        otherwise False.
+    :rtype: boolean
+    """
+    if config('enable-network-segment-range'):
+
+        if CompareOpenStackReleases(os_release('neutron-server')) < 'stein':
+            log("The network segment ranges option is"
+                "only supported on Stein or later",
+                ERROR)
+            return False
+
+        return True
+
+    return False
+
+
 def is_vlan_trunking_requested_and_valid():
     """Check whether VLAN trunking should be enabled by checking whether
        it has been requested and, if it has, is it supported in the current
@@ -714,6 +735,9 @@ class NeutronCCContext(context.NeutronContext):
 
             if is_port_forwarding_enabled():
                 ctxt['service_plugins'].append('port_forwarding')
+
+            if is_network_segment_range_enabled():
+                ctxt['service_plugins'].append('network_segment_range')
 
             if is_qos_requested_and_valid():
                 ctxt['service_plugins'].append('qos')
