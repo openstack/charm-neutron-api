@@ -126,24 +126,27 @@ class SimpleOVSDB(object):
         ),
     }
 
-    def __init__(self, tool):
+    def __init__(self, tool, args=None):
         """SimpleOVSDB constructor.
 
         :param tool: Which tool with database commands to operate on.
                      Usually one of `ovs-vsctl`, `ovn-nbctl`, `ovn-sbctl`
         :type tool: str
+        :param args: Extra arguments to pass to the tool
+        :type args: Optional[List[str]]
         """
         if tool not in self._tool_table_map:
             raise RuntimeError(
                 'tool must be one of "{}"'.format(self._tool_table_map.keys()))
         self._tool = tool
+        self._args = args
 
     def __getattr__(self, table):
         if table not in self._tool_table_map[self._tool]:
             raise AttributeError(
                 'table "{}" not known for use with "{}"'
                 .format(table, self._tool))
-        return self.Table(self._tool, table)
+        return self.Table(self._tool, table, args=self._args)
 
     class Table(object):
         """Methods to interact with contents of OVSDB tables.
@@ -153,14 +156,17 @@ class SimpleOVSDB(object):
         JSON output.
         """
 
-        def __init__(self, tool, table):
+        def __init__(self, tool, table, args=None):
             """SimpleOVSDBTable constructor.
 
             :param table: Which table to operate on
             :type table: str
+            :param args: Extra arguments to pass to the tool
+            :type args: Optional[List[str]]
             """
             self._tool = tool
             self._table = table
+            self._args = args
 
         def _deserialize_ovsdb(self, data):
             """Deserialize OVSDB RFC7047 section 5.1 data.
@@ -215,7 +221,10 @@ class SimpleOVSDB(object):
             :returns: Dictionary with data
             :rtype: Dict[str, any]
             """
-            cmd = [self._tool, '-f', 'json', 'find', self._table]
+            cmd = [self._tool]
+            if self._args:
+                cmd.extend(self._args)
+            cmd.extend(['-f', 'json', 'find', self._table])
             if condition:
                 cmd.append(condition)
             output = utils._run(*cmd)

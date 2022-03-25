@@ -20,7 +20,7 @@ extra-bindings:
   internal:
 series:
 - focal
-- impish
+- jammy
 provides:
   nrpe-external-master:
     interface: nrpe-external-master

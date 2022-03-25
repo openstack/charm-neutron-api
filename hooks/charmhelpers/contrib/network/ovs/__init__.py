@@ -17,7 +17,6 @@ import collections
 import hashlib
 import os
 import re
-import six
 import subprocess
 
 from charmhelpers import deprecate
@@ -367,10 +366,7 @@ def add_ovsbridge_linuxbridge(name, bridge, ifdata=None, portdata=None):
     try:
         import netifaces
     except ImportError:
-        if six.PY2:
-            apt_install('python-netifaces', fatal=True)
-        else:
-            apt_install('python3-netifaces', fatal=True)
+        apt_install('python3-netifaces', fatal=True)
         import netifaces
 
     # NOTE(jamespage):
