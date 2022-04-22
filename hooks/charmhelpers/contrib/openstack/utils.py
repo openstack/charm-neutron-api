@@ -144,6 +144,7 @@ OPENSTACK_RELEASES = (
     'train',
     'ussuri',
     'victoria',
+    'wallaby',
 )
 
 UBUNTU_OPENSTACK_RELEASE = OrderedDict([
@@ -166,6 +167,7 @@ UBUNTU_OPENSTACK_RELEASE = OrderedDict([
     ('eoan', 'train'),
     ('focal', 'ussuri'),
     ('groovy', 'victoria'),
+    ('hirsute', 'wallaby'),
 ])
 
 
@@ -189,6 +191,7 @@ OPENSTACK_CODENAMES = OrderedDict([
     ('2019.2', 'train'),
     ('2020.1', 'ussuri'),
     ('2020.2', 'victoria'),
+    ('2021.1', 'wallaby'),
 ])
 
 # The ugly duckling - must list releases oldest to newest
@@ -231,6 +234,8 @@ SWIFT_CODENAMES = OrderedDict([
         ['2.24.0', '2.25.0']),
     ('victoria',
         ['2.25.0']),
+    ('wallaby',
+        ['2.27.0']),
 ])
 
 # >= Liberty version->codename mapping
@@ -247,6 +252,7 @@ PACKAGE_CODENAMES = {
         ('20', 'train'),
         ('21', 'ussuri'),
         ('22', 'victoria'),
+        ('23', 'wallaby'),
     ]),
     'neutron-common': OrderedDict([
         ('7', 'liberty'),
@@ -260,6 +266,7 @@ PACKAGE_CODENAMES = {
         ('15', 'train'),
         ('16', 'ussuri'),
         ('17', 'victoria'),
+        ('18', 'wallaby'),
     ]),
     'cinder-common': OrderedDict([
         ('7', 'liberty'),
@@ -273,6 +280,7 @@ PACKAGE_CODENAMES = {
         ('15', 'train'),
         ('16', 'ussuri'),
         ('17', 'victoria'),
+        ('18', 'wallaby'),
     ]),
     'keystone': OrderedDict([
         ('8', 'liberty'),
@@ -286,6 +294,7 @@ PACKAGE_CODENAMES = {
         ('16', 'train'),
         ('17', 'ussuri'),
         ('18', 'victoria'),
+        ('19', 'wallaby'),
     ]),
     'horizon-common': OrderedDict([
         ('8', 'liberty'),
@@ -299,6 +308,7 @@ PACKAGE_CODENAMES = {
         ('16', 'train'),
         ('18', 'ussuri'),
         ('19', 'victoria'),
+        ('20', 'wallaby'),
     ]),
     'ceilometer-common': OrderedDict([
         ('5', 'liberty'),
@@ -312,6 +322,7 @@ PACKAGE_CODENAMES = {
         ('13', 'train'),
         ('14', 'ussuri'),
         ('15', 'victoria'),
+        ('16', 'wallaby'),
     ]),
     'heat-common': OrderedDict([
         ('5', 'liberty'),
@@ -325,6 +336,7 @@ PACKAGE_CODENAMES = {
         ('13', 'train'),
         ('14', 'ussuri'),
         ('15', 'victoria'),
+        ('16', 'wallaby'),
     ]),
     'glance-common': OrderedDict([
         ('11', 'liberty'),
@@ -338,6 +350,7 @@ PACKAGE_CODENAMES = {
         ('19', 'train'),
         ('20', 'ussuri'),
         ('21', 'victoria'),
+        ('22', 'wallaby'),
     ]),
     'openstack-dashboard': OrderedDict([
         ('8', 'liberty'),
@@ -351,6 +364,7 @@ PACKAGE_CODENAMES = {
         ('16', 'train'),
         ('18', 'ussuri'),
         ('19', 'victoria'),
+        ('20', 'wallaby'),
     ]),
 }
 
