@@ -1,13 +1,9 @@
 - project:
     templates:
-      - charm-unit-jobs
-      - charm-functional-jobs
-    check:
-      jobs:
-        - focal-xena:
-            voting: false
-        - impish-xena:
-            voting: false
-        # https://bugs.launchpad.net/charm-neutron-api/+bug/1933338
-        - hirsute-wallaby:
-            voting: false
+      - charm-unit-jobs-py38
+      - charm-victoria-functional-jobs
+      - charm-wallaby-functional-jobs
+    vars:
+      needs_charm_build: true
+      charm_build_name: neutron-api
+      build_type: charmcraft
