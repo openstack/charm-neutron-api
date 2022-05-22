@@ -1039,7 +1039,7 @@ def _determine_os_workload_status(
             state, message, lambda: charm_func(configs))
 
     if state is None:
-        state, message = _ows_check_services_running(services, ports)
+        state, message = ows_check_services_running(services, ports)
 
     if state is None:
         state = 'active'
@@ -1213,7 +1213,12 @@ def _ows_check_charm_func(state, message, charm_func_with_configs):
     return state, message
 
 
+@deprecate("use ows_check_services_running() instead", "2022-05", log=juju_log)
 def _ows_check_services_running(services, ports):
+    return ows_check_services_running(services, ports)
+
+
+def ows_check_services_running(services, ports):
     """Check that the services that should be running are actually running
     and that any ports specified are being listened to.
 
