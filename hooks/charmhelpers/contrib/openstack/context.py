@@ -434,6 +434,9 @@ class IdentityServiceContext(OSContextGenerator):
             ('password', ctxt.get('admin_password', '')),
             ('signing_dir', ctxt.get('signing_dir', '')),))
 
+        if ctxt.get('service_type'):
+            c.update((('service_type', ctxt.get('service_type')),))
+
         return c
 
     def __call__(self):
@@ -475,6 +478,9 @@ class IdentityServiceContext(OSContextGenerator):
                              'auth_protocol': auth_protocol,
                              'internal_protocol': int_protocol,
                              'api_version': api_version})
+
+                if rdata.get('service_type'):
+                    ctxt['service_type'] = rdata.get('service_type')
 
                 if float(api_version) > 2:
                     ctxt.update({
@@ -546,6 +552,9 @@ class IdentityCredentialsContext(IdentityServiceContext):
                     'auth_protocol': auth_protocol,
                     'api_version': api_version
                 })
+
+                if rdata.get('service_type'):
+                    ctxt['service_type'] = rdata.get('service_type')
 
                 if float(api_version) > 2:
                     ctxt.update({'admin_domain_name':
