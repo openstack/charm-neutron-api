@@ -14,13 +14,12 @@ description: |
   This charm provides the OpenStack Neutron API service.
 tags:
 - openstack
+series:
+- jammy
 extra-bindings:
   public:
   admin:
   internal:
-series:
-- focal
-- jammy
 provides:
   nrpe-external-master:
     interface: nrpe-external-master

@@ -1,7 +1,7 @@
 variables:
-  openstack-origin: &openstack-origin cloud:focal-xena
+  openstack-origin: &openstack-origin cloud:jammy-zed
 
-series: &series focal
+series: &series jammy
 
 applications:
   keystone-mysql-router:

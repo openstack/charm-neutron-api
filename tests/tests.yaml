@@ -1,15 +1,15 @@
 charm_name: neutron-api
 
 gate_bundles:
-  - focal-xena
-  - impish-xena
+  - jammy-yoga
 
 smoke_bundles:
-  - focal-xena
+  - jammy-yoga
 
 dev_bundles:
-  - focal-yoga
   - jammy-yoga
+  - jammy-zed
+  - kinetic-zed
 
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
@@ -24,5 +24,4 @@ tests_options:
   policyd:
     service: neutron
   force_deploy:
-    - impish-xena
-    - jammy-yoga
+    - kinetic-zed
