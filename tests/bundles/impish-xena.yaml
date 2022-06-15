@@ -1,3 +1,5 @@
+local_overlay_enabled: False
+
 variables:
   openstack-origin: &openstack-origin distro
 
@@ -6,22 +8,22 @@ series: &series impish
 applications:
   keystone-mysql-router:
     charm: ch:mysql-router
-    channel: latest/edge
+    channel: 8.0/edge
   neutron-mysql-router:
     charm: ch:mysql-router
-    channel: latest/edge
+    channel: 8.0/edge
   mysql-innodb-cluster:
     charm: ch:mysql-innodb-cluster
     num_units: 3
     options:
       source: *openstack-origin
-    channel: latest/edge
+    channel: 8.0/edge
   rabbitmq-server:
     charm: ch:rabbitmq-server
     num_units: 1
     options:
       source: *openstack-origin
-    channel: latest/edge
+    channel: 3.9/edge
   neutron-api:
     charm: ../../neutron-api.charm
     num_units: 1
@@ -35,7 +37,7 @@ applications:
     num_units: 1
     options:
       openstack-origin: *openstack-origin
-    channel: latest/edge
+    channel: yoga/edge
 relations:
   - - neutron-api:amqp
     - rabbitmq-server:amqp
