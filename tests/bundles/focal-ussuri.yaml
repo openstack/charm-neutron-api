@@ -8,16 +8,16 @@ series: &series focal
 applications:
   keystone-mysql-router:
     charm: ch:mysql-router
-    channel: 8.0.19/stable
+    channel: 8.0/edge
   neutron-mysql-router:
     charm: ch:mysql-router
-    channel: 8.0.19/stable
+    channel: 8.0/edge
   mysql-innodb-cluster:
     charm: ch:mysql-innodb-cluster
     num_units: 3
     options:
       source: *openstack-origin
-    channel: 8.0.19/stable
+    channel: 8.0/edge
   rabbitmq-server:
     charm: ch:rabbitmq-server
     num_units: 1
