@@ -1,3 +1,5 @@
+local_overlay_enabled: False
+
 variables:
   openstack-origin: &openstack-origin cloud:bionic-train
 
@@ -6,17 +8,19 @@ series: &series bionic
 applications:
   percona-cluster:
     constraints: mem=3072M
-    charm: cs:~openstack-charmers/percona-cluster
+    charm: ch:percona-cluster
     num_units: 1
     options:
       source: *openstack-origin
+    channel: 5.7/edge
   rabbitmq-server:
-    charm: cs:~openstack-charmers/rabbitmq-server
+    charm: ch:rabbitmq-server
     num_units: 1
     options:
       source: *openstack-origin
+    channel: 3.6/edge
   neutron-api:
-    charm: ../../../neutron-api
+    charm: ../../neutron-api.charm
     series: *series
     num_units: 1
     options:
@@ -24,10 +28,11 @@ applications:
       neutron-security-groups: true
       openstack-origin: *openstack-origin
   keystone:
-    charm: cs:~openstack-charmers/keystone
+    charm: ch:keystone
     num_units: 1
     options:
       openstack-origin: *openstack-origin
+    channel: train/edge
 relations:
   - - 'neutron-api:shared-db'
     - 'percona-cluster:shared-db'
