@@ -77,9 +77,9 @@ IPs are created the charm needs a relation with designate charm:
     juju add-relation neutron-api designate
 
 In order to enable the creation of reverse lookup (PTR) records, enable
-"allow-reverse-dns-lookup" charm option:
+"reverse-dns-lookup" charm option:
 
-    juju config neutron-api allow-reverse-dns-lookup=True
+    juju config neutron-api reverse-dns-lookup=True
 
 and configure the following charm options:
 
