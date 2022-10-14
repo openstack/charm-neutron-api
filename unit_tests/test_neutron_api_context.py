@@ -326,6 +326,8 @@ class IdentityServiceContext(CharmTestCase):
         self.test_config.set('region', 'region457')
         self.test_config.set('prefer-ipv6', False)
 
+    @patch.object(charmhelpers.contrib.openstack.context,
+                  'remote_service_name')
     @patch.object(charmhelpers.contrib.openstack.context, 'os_release')
     @patch.object(charmhelpers.contrib.openstack.context, 'format_ipv6_addr')
     @patch.object(charmhelpers.contrib.openstack.context, 'context_complete')
@@ -335,7 +337,7 @@ class IdentityServiceContext(CharmTestCase):
     @patch.object(charmhelpers.contrib.openstack.context, 'log')
     @patch.object(charmhelpers.core.hookenv, 'related_units')
     def test_ids_ctxt(self, _runits1, _log, _rids, _runits2, _rget, _ctxt_comp,
-                      format_ipv6_addr, _os_release):
+                      format_ipv6_addr, _os_release, _remote_svc_name):
         _os_release.return_value = 'rocky'
         _rids.return_value = 'rid1'
         _runits2.return_value = 'runit'
@@ -351,7 +353,7 @@ class IdentityServiceContext(CharmTestCase):
             'internal_host': '127.0.0.4',
             'internal_port': 5432,
         }
-        _rget.return_value = id_data
+        _rget.side_effect = [None, id_data]
         ids_ctxt = context.IdentityServiceContext()
         self.assertEqual(ids_ctxt()['region'], 'region457')
 
