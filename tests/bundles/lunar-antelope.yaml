@@ -1,7 +1,7 @@
 variables:
   openstack-origin: &openstack-origin distro
 
-series: &series jammy
+series: &series lunar
 
 applications:
   keystone-mysql-router:
@@ -19,8 +19,6 @@ applications:
   rabbitmq-server:
     charm: ch:rabbitmq-server
     num_units: 1
-    options:
-      source: *openstack-origin
     channel: latest/edge
   neutron-api:
     charm: ../../neutron-api.charm

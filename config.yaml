@@ -49,7 +49,7 @@ options:
       Setting this to True will enable port forwarding (Rocky and later).
   openstack-origin:
     type: string
-    default: zed
+    default: antelope
     description: |
       Repository from which to install. May be one of the following:
       distro (default), ppa:somecustom/ppa, a deb url sources entry,

@@ -326,11 +326,12 @@ class IdentityServiceContext(CharmTestCase):
     @patch.object(charmhelpers.contrib.openstack.context, 'related_units')
     @patch.object(charmhelpers.contrib.openstack.context, 'relation_ids')
     @patch.object(charmhelpers.contrib.openstack.context, 'log')
-    def test_ids_ctxt(self, _log, _rids, _runits, _rget, _ctxt_comp,
+    @patch.object(charmhelpers.core.hookenv, 'related_units')
+    def test_ids_ctxt(self, _runits1, _log, _rids, _runits2, _rget, _ctxt_comp,
                       format_ipv6_addr, _os_release):
         _os_release.return_value = 'rocky'
         _rids.return_value = 'rid1'
-        _runits.return_value = 'runit'
+        _runits2.return_value = 'runit'
         _ctxt_comp.return_value = True
         id_data = {
             'service_port': 9876,

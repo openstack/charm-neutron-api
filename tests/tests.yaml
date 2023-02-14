@@ -1,15 +1,15 @@
 charm_name: neutron-api
 
 gate_bundles:
-  - jammy-yoga
+  - jammy-zed
 
 smoke_bundles:
-  - jammy-yoga
+  - jammy-zed
 
 dev_bundles:
-  - jammy-yoga
-  - jammy-zed
+  - jammy-antelope
   - kinetic-zed
+  - lunar-antelope
 
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
@@ -25,3 +25,4 @@ tests_options:
     service: neutron
   force_deploy:
     - kinetic-zed
+    - lunar-antelope
