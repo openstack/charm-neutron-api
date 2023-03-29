@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import json
 
 from unittest.mock import MagicMock, patch
@@ -30,6 +31,7 @@ TO_PATCH = [
     'relation_get',
     'relation_ids',
     'related_units',
+    'https'
 ]
 
 
@@ -378,6 +380,7 @@ class HAProxyContextTest(CharmTestCase):
         with patch('builtins.__import__'):
             self.assertTrue('units' not in hap_ctxt())
 
+    @patch.object(charmhelpers.contrib.network.ip, 'is_ipv6_disabled')
     @patch.object(charmhelpers.contrib.openstack.context, 'get_relation_ip')
     @patch.object(charmhelpers.contrib.openstack.context, 'mkdir')
     @patch.object(
@@ -396,11 +399,21 @@ class HAProxyContextTest(CharmTestCase):
     def test_context_peers(self, _open, _import, _kv, _log, _rids, _runits,
                            _rget, _lunit, _config,
                            _get_address_in_network, _get_netmask_for_address,
-                           _mkdir, _get_relation_ip):
-        unit_addresses = {
-            'neutron-api-0': '10.10.10.10',
-            'neutron-api-1': '10.10.10.11',
+                           _mkdir, _get_relation_ip, _is_ipv6_disabled):
+        healthcheck = [{
+            'option': 'httpchk GET /healthcheck',
+            'http-check': 'expect status 200',
+        }]
+        backend_options = {
+            'neutron-server': healthcheck,
         }
+        self.https.return_value = False
+        unit_addresses = collections.OrderedDict(
+            [
+                ('neutron-api-1', '10.10.10.11'),
+                ('neutron-api-0', '10.10.10.10'),
+            ]
+        )
         _rids.return_value = ['rid1']
         _runits.return_value = ['neutron-api/0']
         _rget.return_value = unit_addresses['neutron-api-0']
@@ -410,6 +423,7 @@ class HAProxyContextTest(CharmTestCase):
         _get_address_in_network.return_value = None
         _get_netmask_for_address.return_value = '255.255.255.0'
         _kv().get.return_value = 'abcdefghijklmnopqrstuvwxyz123456'
+        _is_ipv6_disabled.return_value = True
         service_ports = {'neutron-server': [9696, 9686]}
         ctxt_data = {
             'local_host': '127.0.0.1',
@@ -427,6 +441,8 @@ class HAProxyContextTest(CharmTestCase):
             'service_ports': service_ports,
             'neutron_bind_port': 9686,
             'ipv6_enabled': True,
+            'https': False,
+            'backend_options': backend_options,
         }
         _import().api_port.return_value = 9696
         hap_ctxt = context.HAProxyContext()

@@ -33,6 +33,7 @@ from charmhelpers.contrib.openstack import context
 from charmhelpers.contrib.hahelpers.cluster import (
     determine_api_port,
     determine_apache_port,
+    https,
 )
 from charmhelpers.contrib.openstack.utils import (
     os_release,
@@ -762,6 +763,15 @@ class HAProxyContext(context.HAProxyContext):
         from neutron_api_utils import api_port
         ctxt = super(HAProxyContext, self).__call__()
 
+        healthcheck = [{
+            'option': 'httpchk GET /healthcheck',
+            'http-check': 'expect status 200',
+        }]
+
+        backend_options = {
+            'neutron-server': healthcheck,
+        }
+
         # Apache ports
         a_neutron_api = determine_apache_port(api_port('neutron-server'),
                                               singlenode_mode=True)
@@ -778,6 +788,8 @@ class HAProxyContext(context.HAProxyContext):
 
         # for haproxy.conf
         ctxt['service_ports'] = port_mapping
+        ctxt['backend_options'] = backend_options
+        ctxt['https'] = https()
         return ctxt
 
 
