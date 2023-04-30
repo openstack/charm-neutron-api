@@ -206,6 +206,14 @@ CLOUD_ARCHIVE_POCKETS = {
     'wallaby/proposed': 'focal-proposed/wallaby',
     'focal-wallaby/proposed': 'focal-proposed/wallaby',
     'focal-proposed/wallaby': 'focal-proposed/wallaby',
+    #xena
+    'xena': 'focal-updates/xena',
+    'focal-xena': 'focal-updates/xena',
+    'focal-xena/updates': 'focal-updates/xena',
+    'focal-xena/xena': 'focal-updates/xena',
+    'xena/proposed': 'focal-proposed/xena',
+    'focal-xena/proposed': 'focal-proposed/xena',
+    'focal-proposed/xena': 'focal-proposed/xena',
 }
 
 

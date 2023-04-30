@@ -64,7 +64,8 @@ OPENSTACK_RELEASES_PAIRS = [
     'bionic_train', 'eoan_train',
     'bionic_ussuri', 'focal_ussuri',
     'focal_victoria', 'groovy_victoria',
-    'focal_wallaby',
+    'focal_wallaby', 'hirsute_wallaby',
+    'focal_xena', 'impish_xena'
 ]
 
 

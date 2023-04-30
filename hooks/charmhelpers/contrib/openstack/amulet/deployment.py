@@ -303,6 +303,7 @@ class OpenStackAmuletDeployment(AmuletDeployment):
             ('focal', 'cloud:focal-victoria'): self.focal_victoria,
             ('focal', 'cloud:focal-wallaby'): self.focal_wallaby,
             ('groovy', None): self.groovy_victoria,
+            ('focal', 'cloud:focal-xena'): self.focal_xena,
         }
         return releases[(self.series, self.openstack)]
 
