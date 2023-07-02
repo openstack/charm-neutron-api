@@ -214,6 +214,14 @@ CLOUD_ARCHIVE_POCKETS = {
     'xena/proposed': 'focal-proposed/xena',
     'focal-xena/proposed': 'focal-proposed/xena',
     'focal-proposed/xena': 'focal-proposed/xena',
+    #yoga
+    'yoga': 'focal-updates/yoga',
+    'focal-yoga': 'focal-updates/yoga',
+    'focal-yoga/updates': 'focal-updates/yoga',
+    'focal-yoga/yoga': 'focal-updates/yoga',
+    'yoga/proposed': 'focal-proposed/yoga',
+    'focal-yoga/proposed': 'focal-proposed/yoga',
+    'focal-proposed/yoga': 'focal-proposed/yoga',
 }
 
 
