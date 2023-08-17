@@ -199,7 +199,7 @@ class SimpleOVSDB(object):
                         decoded_set = []
                         for el in data[1]:
                             decoded_set.append(self._deserialize_ovsdb(el))
-                        return(decoded_set)
+                        return decoded_set
                     # fall back to normal processing below
                     break
 
