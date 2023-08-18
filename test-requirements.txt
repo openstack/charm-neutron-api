@@ -10,6 +10,8 @@
 pyparsing<3.0.0  # aodhclient is pinned in zaza and needs pyparsing < 3.0.0, but cffi also needs it, so pin here.
 setuptools<50.0.0  # https://github.com/pypa/setuptools/commit/04e3df22df840c6bb244e9b27bc56750c44b7c85
 
+jsonschema<4.18.0  # jsonschema 4.18.0 depends on Rust toolchain (via rpds-py)
+
 requests>=2.18.4
 
 stestr>=2.2.0
