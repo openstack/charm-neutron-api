@@ -233,6 +233,11 @@ class GeneralTests(CharmTestCase):
         self.assertEqual(context.get_ml2_mechanism_drivers(),
                          'openvswitch,l2population')
 
+    def test_get_ml2_mechanism_drivers_bobcat(self):
+        self.os_release.return_value = 'bobcat'
+        self.assertEqual(context.get_ml2_mechanism_drivers(),
+                         'openvswitch,l2population')
+
     def test_get_ml2_mechanism_drivers_no_l2pop(self):
         self.os_release.return_value = 'mitaka'
         self.test_config.set('l2-population', False)

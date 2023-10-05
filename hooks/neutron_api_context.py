@@ -196,7 +196,8 @@ def get_ml2_mechanism_drivers():
     ]
 
     cmp_release = CompareOpenStackReleases(os_release('neutron-server'))
-    if (cmp_release == 'kilo' or cmp_release >= 'mitaka'):
+    if (cmp_release == 'kilo' or
+            cmp_release >= 'mitaka' and cmp_release <= 'antelope'):
         mechanism_drivers.append('hyperv')
 
     if get_l2population():

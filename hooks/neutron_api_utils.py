@@ -467,6 +467,8 @@ def determine_packages(source=None, openstack_release=None):
             packages.append('python3-neutron-fwaas')
         if cmp_release >= 'train':
             packages.remove('python3-neutron-lbaas')
+        if cmp_release >= 'bobcat':
+            packages.remove('python3-networking-hyperv')
 
     for v in resource_map().values():
         packages.extend(v['services'])
