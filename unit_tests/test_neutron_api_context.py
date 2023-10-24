@@ -385,7 +385,7 @@ class HAProxyContextTest(CharmTestCase):
         with patch('builtins.__import__'):
             self.assertTrue('units' not in hap_ctxt())
 
-    @patch.object(charmhelpers.contrib.network.ip, 'is_ipv6_disabled')
+    @patch.object(charmhelpers.contrib.openstack.context, 'is_ipv6_disabled')
     @patch.object(charmhelpers.contrib.openstack.context, 'get_relation_ip')
     @patch.object(charmhelpers.contrib.openstack.context, 'mkdir')
     @patch.object(
@@ -445,7 +445,7 @@ class HAProxyContextTest(CharmTestCase):
             'default_backend': '10.10.10.11',
             'service_ports': service_ports,
             'neutron_bind_port': 9686,
-            'ipv6_enabled': True,
+            'ipv6_enabled': False,
             'https': False,
             'backend_options': backend_options,
         }
