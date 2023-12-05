@@ -48,3 +48,6 @@ tempest<31.0.0;python_version<'3.8' and python_version>='3.6'
 tempest<24.0.0;python_version<'3.6'
 
 croniter            # needed for charm-rabbitmq-server unit tests
+
+openstacksdk<=1.5.0; # Pin to a lower version of openstacksdk due to introduced libraries
+
