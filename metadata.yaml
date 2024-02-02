@@ -23,6 +23,7 @@ series:
 - bionic
 - eoan
 - focal
+- jammy
 - trusty
 - groovy
 provides:
