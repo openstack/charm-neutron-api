@@ -1,7 +1,7 @@
 variables:
-  openstack-origin: &openstack-origin distro
+  openstack-origin: &openstack-origin cloud:jammy-caracal
 
-series: &series mantic
+series: &series jammy
 
 applications:
   keystone-mysql-router:
@@ -33,7 +33,7 @@ applications:
     num_units: 1
     options:
       openstack-origin: *openstack-origin
-    channel: latest/edge
+    channel: 2024.1/edge
 relations:
   - - neutron-api:amqp
     - rabbitmq-server:amqp

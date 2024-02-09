@@ -14,11 +14,9 @@ description: |
   This charm provides the OpenStack Neutron API service.
 docs: https://discourse.charmhub.io/t/neutron-api-docs-index/10555
 tags:
-- openstack
+  - openstack
 series:
-- jammy
-- lunar
-- mantic
+  - jammy
 extra-bindings:
   public:
   admin:

@@ -2,15 +2,12 @@ charm_name: neutron-api
 
 gate_bundles:
   - jammy-antelope
-
-smoke_bundles:
-  - jammy-antelope
-
-dev_bundles:
   - jammy-bobcat
-  - lunar-antelope
-  - mantic-bobcat
-
+  - jammy-caracal
+smoke_bundles:
+  - jammy-caracal
+dev_bundles:
+  - noble-caracal
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
   - zaza.openstack.charm_tests.neutron.tests.NeutronCreateNetworkTest
@@ -24,5 +21,4 @@ tests_options:
   policyd:
     service: neutron
   force_deploy:
-    - lunar-antelope
-    - mantic-bobcat
+    - noble-caracal
