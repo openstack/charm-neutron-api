@@ -306,6 +306,7 @@ class OpenStackAmuletDeployment(AmuletDeployment):
             ('focal', 'cloud:focal-xena'): self.focal_xena,
             ('focal', 'cloud:focal-yoga'): self.focal_yoga,
             ('jammy', None): self.jammy_yoga,
+            ('jammy', 'cloud:jammy-zed'): self.jammy_zed,
         }
         return releases[(self.series, self.openstack)]
 
@@ -328,7 +329,8 @@ class OpenStackAmuletDeployment(AmuletDeployment):
             ('groovy', 'victoria'),
             ('hirsute', 'wallaby'),
             ('impish', 'xena'),
-            ('jammy', 'yoga')
+            ('jammy', 'yoga'),
+            ('kinetic', 'zed'),
         ])
         if self.openstack:
             os_origin = self.openstack.split(':')[1]

@@ -66,7 +66,8 @@ OPENSTACK_RELEASES_PAIRS = [
     'focal_victoria', 'groovy_victoria',
     'focal_wallaby', 'hirsute_wallaby',
     'focal_xena', 'impish_xena',
-    'focal_yoga', 'jammy_yoga'
+    'focal_yoga', 'jammy_yoga',
+    'jammy_zed', 'kinetic_zed',
 ]
 
 
