@@ -52,6 +52,7 @@ TENANT_NET_TYPES = [VXLAN, GRE, VLAN, FLAT, LOCAL]
 EXTENSION_DRIVER_PORT_SECURITY = 'port_security'
 EXTENSION_DRIVER_DNS = 'dns'
 EXTENSION_DRIVER_DNS_DOMAIN_PORTS = 'dns_domain_ports'
+EXTENSION_DRIVER_DNS_DOMAIN_KEYWORDS = 'dns_domain_keywords'
 EXTENSION_DRIVER_QOS = 'qos'
 EXTENSION_DRIVER_UPLINK_STATUS_PROP = 'uplink_status_propagation'
 
@@ -625,8 +626,10 @@ class NeutronCCContext(context.NeutronContext):
         if enable_dns_extension_driver:
             if cmp_release < 'queens':
                 extension_drivers.append(EXTENSION_DRIVER_DNS)
-            else:
+            elif cmp_release < 'yoga':
                 extension_drivers.append(EXTENSION_DRIVER_DNS_DOMAIN_PORTS)
+            else:
+                extension_drivers.append(EXTENSION_DRIVER_DNS_DOMAIN_KEYWORDS)
 
         if is_qos_requested_and_valid():
             extension_drivers.append(EXTENSION_DRIVER_QOS)
