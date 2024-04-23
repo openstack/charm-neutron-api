@@ -913,7 +913,14 @@ class NeutronApiSDNContext(context.SubordinateConfigContext):
 
     def __call__(self):
         ctxt = super(NeutronApiSDNContext, self).__call__()
-        for rid in relation_ids('neutron-plugin-api-subordinate'):
+        rel_ids = relation_ids('neutron-plugin-api-subordinate')
+        # Return empty dict when there are no related units, this will flag the
+        # context as incomplete and will allow end user messaging of missing
+        # relations
+        if not rel_ids:
+            return {}
+
+        for rid in rel_ids:
             for unit in related_units(rid):
                 rdata = relation_get(rid=rid, unit=unit)
                 plugin = rdata.get('neutron-plugin')
@@ -923,18 +930,33 @@ class NeutronApiSDNContext(context.SubordinateConfigContext):
                 for key in self.defaults.keys():
                     remote_value = rdata.get(key)
                     ctxt_key = self.defaults[key]['templ_key']
+                    current = ctxt.get(ctxt_key, [])
+                    if current:
+                        current = [x.strip() for x in current.split(',')]
+
                     if remote_value:
-                        ctxt[ctxt_key] = remote_value
-                    elif self.defaults[key]['value']:
+                        values = [v.strip() for v in remote_value.split(',')]
+                        for value in values:
+                            if value not in current:
+                                current.append(value)
+                        ctxt[ctxt_key] = ','.join(current)
+                    elif self.defaults[key]['value'] and not current:
                         ctxt[ctxt_key] = self.defaults[key]['value']
                     else:
                         # Do not set empty values
                         pass
-                return ctxt
-        # Return empty dict when there are no related units, this will flag the
-        # context as incomplete and will allow end user messaging of missing
-        # relations
-        return {}
+
+        # Sanity check to ensure that the ovn and openvswitch mechanism
+        # drivers are not both set.
+        mechanism_drivers = ctxt.get('mechanism_drivers', None)
+        if mechanism_drivers:
+            mechanism_drivers = mechanism_drivers.split(',')
+            if ('ovn' in mechanism_drivers and
+                    'openvswitch' in mechanism_drivers):
+                mechanism_drivers.remove('openvswitch')
+                ctxt['mechanism_drivers'] = ','.join(mechanism_drivers)
+
+        return ctxt
 
 
 class NeutronApiSDNConfigFileContext(context.OSContextGenerator):

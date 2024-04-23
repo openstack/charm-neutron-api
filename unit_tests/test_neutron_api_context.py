@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 import neutron_api_context as context
 import charmhelpers
 
-from test_utils import CharmTestCase
+from test_utils import CharmTestCase, TestRelation
 
 TO_PATCH = [
     'config',
@@ -1342,6 +1342,115 @@ class NeutronApiSDNContextTest(CharmTestCase):
                 'sections': {u'DEFAULT': [[u'neutronboost', True]]},
             }
         )
+
+    @patch('neutron_api_context.super')
+    @patch.object(context, 'relation_get')
+    @patch.object(context, 'related_units')
+    @patch.object(context, 'relation_ids')
+    def test_multiple_subordinates_no_relation_data(self, rel_ids, rel_units,
+                                                    rel_get, _super):
+        """Test multiple subordinates w/out data provide empty context."""
+        napisdn_instance = context.NeutronApiSDNContext()
+
+        # Mock the call to super as it invokes relation-get and other methods
+        # due to these methods being imported into the
+        # charmhelpers.contrib.openstack.context library which requires
+        # multiple mocks for the same function (which is confusing).
+        _super.return_value = MagicMock(return_value={})
+
+        rel_ids.return_value = []
+        rel_units.return_value = []
+
+        rel_1 = TestRelation()
+        rel_2 = TestRelation()
+
+        def _relation_get(attribute=None, unit=None, rid=None, app=None):
+            if rid == 'rel-1':
+                return rel_1
+            if rid == 'rel-2':
+                return rel_2
+
+            return None
+
+        rel_get.side_effect = _relation_get
+
+        ctxt = napisdn_instance()
+        self.assertEqual(ctxt, {})
+
+        rel_ids.return_value = ['rel-1', 'rel-2']
+        rel_units.return_value = ['subordinate-1', 'subordinate-2']
+
+        ctxt = napisdn_instance()
+        self.assertEqual(ctxt, {})
+
+    @patch('neutron_api_context.super')
+    @patch.object(context, 'relation_get')
+    @patch.object(context, 'related_units')
+    @patch.object(context, 'relation_ids')
+    def test_multiple_subordinates_ovn_ironic(self, _rel_ids, _rel_units,
+                                              _rel_get, _super):
+        """Test multiple subordinates provide merged context."""
+        napisdn_instance = context.NeutronApiSDNContext()
+
+        # Mock the call to super as it invokes relation-get and other methods
+        # due to these methods being imported into the
+        # charmhelpers.contrib.openstack.context library which requires
+        # multiple mocks for the same function (which is confusing).
+        _super.return_value = MagicMock(return_value={})
+
+        _rel_ids.return_value = ['rel-1', 'rel-2']
+        _rel_units.return_value = ['subordinate-1', 'subordinate-2']
+
+        ovn_rel = TestRelation({
+            'mechanism-drivers': 'ovn',
+            'neutron-plugin': 'ovn',
+            'service-plugins': (
+                'metering,segments,'
+                'neutron_dynamic_routing.services.bgp.bgp_plugin.BgpPlugin,'
+                'ovn-router,trunk'
+            ),
+            'subordinate_configuration': (
+                '{"neutron-api": {"/etc/neutron/plugins/ml2/ml2_conf.ini":'
+                '{"sections": {"ovn": "test"}}}}'
+            ),
+            'tenant-network-types': 'geneve, gre, vlan, flat, local'
+        })
+        ironic_rel = TestRelation({
+            'mechanism-drivers': 'openvswitch,l2population,baremetal',
+            'neutron-plugin': 'ironic',
+            'subordinate_configuration': '{}'
+        })
+
+        def _relation_get(attribute=None, unit=None, rid=None, app=None):
+            if rid == 'rel-1':
+                return ovn_rel
+            if rid == 'rel-2':
+                return ironic_rel
+
+            return None
+
+        _rel_get.side_effect = _relation_get
+
+        ctxt = napisdn_instance()
+
+        # Verify that when the ovn mechanism driver is specified, the
+        # openvswitch one is not available.
+        mechanism_drivers = ctxt.get('mechanism_drivers', '').split(',')
+        self.assertTrue(mechanism_drivers.index('ovn') >= 0)
+        self.assertRaises(ValueError, mechanism_drivers.index, 'openvswitch')
+
+        self.assertEqual(ctxt, {
+            'core_plugin': 'neutron.plugins.ml2.plugin.Ml2Plugin',
+            'mechanism_drivers': 'ovn,l2population,baremetal',
+            'neutron_plugin': 'ironic',  # last one wins
+            'neutron_plugin_config': '/etc/neutron/plugins/ml2/ml2_conf.ini',
+            'service_plugins': (
+                'metering,segments,'
+                'neutron_dynamic_routing.services.bgp.bgp_plugin.BgpPlugin,'
+                'ovn-router,trunk'
+            ),
+            'tenant_network_types': 'geneve,gre,vlan,flat,local',
+        })
 
     def test_empty(self):
         self.ctxt_check(
