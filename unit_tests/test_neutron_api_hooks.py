@@ -267,14 +267,15 @@ class NeutronAPIHooksTests(CharmTestCase):
         self.relation_ids.return_value = ['neutron-plugin-api-subordinate:1']
         self.CONFIGS.complete_contexts.return_value = ['amqp']
         self._call_hook('amqp-relation-changed')
-        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+        self.CONFIGS.write.assert_called_with(NEUTRON_CONF)
         self.relation_ids.assert_called_with('neutron-plugin-api-subordinate')
         plugin_joined.assert_called_with(
             relid='neutron-plugin-api-subordinate:1')
 
     def test_amqp_departed(self):
+        self.CONFIGS.complete_contexts.return_value = ['amqp']
         self._call_hook('amqp-relation-departed')
-        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+        self.CONFIGS.write.assert_called_with(NEUTRON_CONF)
 
     def test_db_joined(self):
         self.get_relation_ip.return_value = '10.0.0.1'
@@ -395,7 +396,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         _api_rel_joined = self.patch('neutron_api_relation_joined')
         self.relation_ids.side_effect = self._fake_relids
         self._call_hook('identity-service-relation-changed')
-        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+        self.CONFIGS.write.assert_called_with(NEUTRON_CONF)
         self.assertTrue(_api_rel_joined.called)
 
     @patch.object(hooks, 'canonical_url')
@@ -464,7 +465,7 @@ class NeutronAPIHooksTests(CharmTestCase):
         })
         self._call_hook('vsd-rest-api-relation-changed')
         config_file = '/etc/neutron/plugins/nuage/nuage_plugin.ini'
-        self.assertTrue(self.CONFIGS.write.called_with(config_file))
+        self.CONFIGS.write.assert_called_with(config_file)
 
     def test_vsd_api_relation_joined(self):
         self.os_release.return_value = 'kilo'
@@ -488,12 +489,12 @@ class NeutronAPIHooksTests(CharmTestCase):
     def test_neutron_api_relation_changed(self):
         self.CONFIGS.complete_contexts.return_value = ['shared-db']
         self._call_hook('neutron-api-relation-changed')
-        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+        self.CONFIGS.write.assert_called_with(NEUTRON_CONF)
 
     def test_neutron_api_relation_changed_incomplere_ctxt(self):
         self.CONFIGS.complete_contexts.return_value = []
         self._call_hook('neutron-api-relation-changed')
-        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+        self.CONFIGS.write.assert_called_with(NEUTRON_CONF)
 
     @patch.object(hooks, 'is_api_ready')
     def test_neutron_load_balancer_relation_joined(self, is_api_ready):
@@ -1023,25 +1024,26 @@ class NeutronAPIHooksTests(CharmTestCase):
         })
         self.relation_ids.side_effect = self._fake_relids
         self._call_hook('external-dns-relation-joined')
-        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+        self.CONFIGS.write_all.assert_called_once()
 
     def test_designate_peer_departed(self):
         self._call_hook('external-dns-relation-departed')
-        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+        self.CONFIGS.write_all.assert_called_once()
 
     def test_infoblox_peer_changed(self):
         self.is_db_initialised.return_value = True
+        self.CONFIGS.complete_contexts.return_value = ['infoblox-neutron']
         self.test_relation.set({
             'dc_id': '0',
         })
         self.os_release.return_value = 'queens'
         self.relation_ids.side_effect = self._fake_relids
         self._call_hook('infoblox-neutron-relation-changed')
-        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+        self.CONFIGS.write.assert_called_with(NEUTRON_CONF)
 
     def test_infoblox_peer_departed(self):
         self._call_hook('infoblox-neutron-relation-departed')
-        self.assertTrue(self.CONFIGS.write.called_with(NEUTRON_CONF))
+        self.CONFIGS.write_all.assert_called_once()
 
     @patch.object(hooks, 'NeutronApiSDNContext')
     @patch.object(hooks, 'NeutronCCContext')

@@ -499,11 +499,11 @@ class NeutronCCContextTest(CharmTestCase):
                  "queens": ["B"],
                  "ussuri": ["C"]}
         p = context.NeutronCCContext().get_service_plugins('train', plugs)
-        self.assertEquals(p, ["B"])
+        self.assertEqual(p, ["B"])
         p = context.NeutronCCContext().get_service_plugins('ussuri', plugs)
-        self.assertEquals(p, ["C"])
+        self.assertEqual(p, ["C"])
         p = context.NeutronCCContext().get_service_plugins('wallaby', plugs)
-        self.assertEquals(p, ["C"])
+        self.assertEqual(p, ["C"])
 
     @patch.object(context, 'NeutronLoadBalancerContext')
     @patch.object(context.NeutronCCContext, 'network_manager')
