@@ -144,11 +144,13 @@ API_PORTS = {
     'neutron-server': 9696,
 }
 
+SERVICE = 'neutron'
 NEUTRON_CONF_DIR = "/etc/neutron"
 
 NEUTRON_CONF = '%s/neutron.conf' % NEUTRON_CONF_DIR
 NEUTRON_LBAAS_CONF = '%s/neutron_lbaas.conf' % NEUTRON_CONF_DIR
 NEUTRON_VPNAAS_CONF = '%s/neutron_vpnaas.conf' % NEUTRON_CONF_DIR
+NEUTRON_AUDIT_CONF = '%s/api_audit_map.conf' % NEUTRON_CONF_DIR
 HAPROXY_CONF = '/etc/haproxy/haproxy.cfg'
 APACHE_PORTS_CONF = '/etc/apache2/ports.conf'
 APACHE_CONF = '/etc/apache2/sites-available/openstack_https_frontend'
@@ -187,7 +189,8 @@ BASE_RESOURCE_MAP = OrderedDict([
                      context.InternalEndpointContext(),
                      context.MemcacheContext(),
                      neutron_api_context.DesignateContext(),
-                     neutron_api_context.NeutronInfobloxContext()],
+                     neutron_api_context.NeutronInfobloxContext(),
+                     context.KeystoneAuditMiddleware(service=SERVICE)],
     }),
     (NEUTRON_DEFAULT, {
         'services': ['neutron-server'],
@@ -195,7 +198,12 @@ BASE_RESOURCE_MAP = OrderedDict([
     }),
     (API_PASTE_INI, {
         'services': ['neutron-server'],
-        'contexts': [neutron_api_context.NeutronApiApiPasteContext()],
+        'contexts': [neutron_api_context.NeutronApiApiPasteContext(),
+                     context.KeystoneAuditMiddleware(service=SERVICE)],
+    }),
+    (NEUTRON_AUDIT_CONF, {
+        'services': ['apache2'],
+        'contexts': [context.KeystoneAuditMiddleware(service=SERVICE)]
     }),
     (APACHE_CONF, {
         'contexts': [neutron_api_context.ApacheSSLContext()],
@@ -562,6 +570,9 @@ def resource_map(release=None):
         resource_map.pop(APACHE_CONF)
     else:
         resource_map.pop(APACHE_24_CONF)
+
+    if CompareOpenStackReleases(release) < 'yoga':
+        resource_map.pop(NEUTRON_AUDIT_CONF)
 
     if manage_plugin():
         # add neutron plugin requirements. nova-c-c only needs the
