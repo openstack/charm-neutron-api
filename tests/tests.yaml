@@ -16,11 +16,15 @@ tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronCreateNetworkTest
   - zaza.openstack.charm_tests.neutron.tests.SecurityTest
   - zaza.openstack.charm_tests.policyd.tests.NeutronApiTests
+  - zaza.openstack.charm_tests.audit.tests.KeystoneAuditMiddlewareTest
 
 configure:
   - zaza.openstack.charm_tests.keystone.setup.add_demo_user
 
 tests_options:
+  audit-middleware:
+    service: neutron
+    application: neutron-api
   policyd:
     service: neutron
   force_deploy:
