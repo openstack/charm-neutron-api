@@ -281,6 +281,7 @@ class TestNeutronAPIUtils(CharmTestCase):
             (nutils.NEUTRON_CONF, ['neutron-server']),
             (nutils.NEUTRON_DEFAULT, ['neutron-server']),
             (nutils.API_PASTE_INI, ['neutron-server']),
+            (nutils.NEUTRON_AUDIT_CONF, ['apache2']),
             (nutils.APACHE_CONF, ['apache2']),
             (nutils.HAPROXY_CONF, ['haproxy']),
             (nutils.APACHE_PORTS_CONF, ['apache2']),
@@ -302,6 +303,7 @@ class TestNeutronAPIUtils(CharmTestCase):
             (nutils.NEUTRON_CONF, ['neutron-server']),
             (nutils.NEUTRON_DEFAULT, ['neutron-server']),
             (nutils.API_PASTE_INI, ['neutron-server']),
+            (nutils.NEUTRON_AUDIT_CONF, ['apache2']),
             (nutils.APACHE_CONF, ['apache2']),
             (nutils.HAPROXY_CONF, ['haproxy']),
             (nutils.APACHE_PORTS_CONF, ['apache2']),
@@ -332,6 +334,7 @@ class TestNeutronAPIUtils(CharmTestCase):
                  '/etc/neutron/api-paste.ini',
                  '/etc/default/neutron-server',
                  '/etc/neutron/plugins/ml2/ml2_conf.ini',
+                 '/etc/neutron/api_audit_map.conf',
                  '/etc/apache2/ports.conf',
                  '/etc/apache2/sites-available/openstack_https_frontend',
                  '/etc/haproxy/haproxy.cfg']
