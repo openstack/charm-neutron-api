@@ -1,9 +1,7 @@
 charm_name: neutron-api
 
 gate_bundles:
-  - jammy-antelope
-  - jammy-bobcat
-  - jammy-caracal
+  - noble-caracal
 smoke_bundles:
   - jammy-caracal
 dev_bundles:
@@ -24,5 +22,3 @@ tests_options:
     application: neutron-api
   policyd:
     service: neutron
-  force_deploy:
-    - noble-caracal
