@@ -807,7 +807,7 @@ def migrate_neutron_database(upgrade=False):
         return
 
     log('Migrating the neutron database.')
-    if(os_release('neutron-server') == 'juno' and
+    if (os_release('neutron-server') == 'juno' and
        config('neutron-plugin') == 'vsp'):
         nuage_vsp_juno_neutron_migration()
     else:
