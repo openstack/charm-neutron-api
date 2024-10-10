@@ -51,7 +51,8 @@ options:
     type: boolean
     default: False
     description: |
-      Setting this to True will enable port forwarding (Rocky and later).
+      Setting this to True will enable port forwarding. Supported in Rocky and
+      later for OVS, Victoria and later for OVN.
   openstack-origin:
     type: string
     default: caracal
