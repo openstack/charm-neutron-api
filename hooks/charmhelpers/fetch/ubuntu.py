@@ -230,6 +230,14 @@ CLOUD_ARCHIVE_POCKETS = {
     'zed/proposed': 'jammy-proposed/zed',
     'jammy-zed/proposed': 'jammy-proposed/zed',
     'jammy-proposed/zed': 'jammy-proposed/zed',
+    # antelope
+    'antelope': 'jammy-updates/antelope',
+    'jammy-antelope': 'jammy-updates/antelope',
+    'jammy-antelope/updates': 'jammy-updates/antelope',
+    'jammy-updates/antelope': 'jammy-updates/antelope',
+    'antelope/proposed': 'jammy-proposed/antelope',
+    'jammy-antelope/proposed': 'jammy-proposed/antelope',
+    'jammy-proposed/antelope': 'jammy-proposed/antelope',
 }
 
 
