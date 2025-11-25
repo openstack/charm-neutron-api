@@ -13,10 +13,6 @@ requests>=2.18.4
 
 stestr>=2.2.0
 
-# Dependency of stestr. Workaround for
-# https://github.com/mtreinish/stestr/issues/145
-cliff<3.0.0
-
 coverage>=4.5.2
 pyudev              # for ceph-* charm unit tests (need to fix the ceph-* charm unit tests/mocking)
 git+https://github.com/openstack-charmers/zaza.git#egg=zaza
