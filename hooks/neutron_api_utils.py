@@ -188,6 +188,7 @@ BASE_RESOURCE_MAP = OrderedDict([
                      context.WorkerConfigContext(),
                      context.InternalEndpointContext(),
                      context.MemcacheContext(),
+                     context.OsloDBContext(),
                      neutron_api_context.DesignateContext(),
                      neutron_api_context.NeutronInfobloxContext(),
                      context.KeystoneAuditMiddleware(service=SERVICE)],
