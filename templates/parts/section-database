@@ -1,4 +1,10 @@
 {% if database_host -%}
 [database]
 connection = {{ database_type }}://{{ database_user }}:{{ database_password }}@{{ database_host }}/{{ database }}{% if database_ssl_ca %}?ssl_ca={{ database_ssl_ca }}{% if database_ssl_cert %}&ssl_cert={{ database_ssl_cert }}&ssl_key={{ database_ssl_key }}{% endif %}{% endif %}
+{% if db_max_pool_size is number %}
+max_pool_size = {{ db_max_pool_size }}
+{% endif %}
+{% if db_max_overflow is number %}
+max_overflow = {{ db_max_overflow }}
+{% endif %}
 {% endif -%}
