@@ -112,6 +112,19 @@ options:
     type: string
     default: neutron
     description: Database name for Neutron (if enabled).
+  db-max-pool-size:
+    type: int
+    default:
+    description: |
+      Optional override for the maximum number of SQL connections to keep
+      open in a pool. Leave unset to use the service default. Setting a
+      value of 0 indicates no limit.
+  db-max-overflow:
+    type: int
+    default:
+    description: |
+      Optional override for the maximum number of connections to allow for
+      connection pool overflow. Leave unset to use the service default.
   region:
     type: string
     default: RegionOne
