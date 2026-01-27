@@ -661,7 +661,7 @@ stevedore==5.1.0
     #   python-keystoneclient
     #   python-magnumclient
     #   tempest
-tempest @ git+https://opendev.org/openstack/tempest.git
+tempest==36.0.0
     # via -r test-requirements.in
 tenacity==8.2.3
     # via
