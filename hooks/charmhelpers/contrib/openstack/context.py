@@ -358,6 +358,31 @@ def db_ssl(rdata, ctxt, ssl_dir):
     return ctxt
 
 
+class OsloDBContext(OSContextGenerator):
+    """Context for configuring Oslo database connection pooling options."""
+
+    def __call__(self):
+        ctxt = {}
+
+        try:
+            max_pool_size = config('db-max-pool-size')
+        except Exception:
+            max_pool_size = None
+
+        try:
+            max_overflow = config('db-max-overflow')
+        except Exception:
+            max_overflow = None
+
+        if max_pool_size is not None and max_pool_size >= 0:
+            ctxt['db_max_pool_size'] = max_pool_size
+
+        if max_overflow is not None and max_overflow >= 0:
+            ctxt['db_max_overflow'] = max_overflow
+
+        return ctxt
+
+
 class IdentityServiceContext(OSContextGenerator):
 
     def __init__(self,
