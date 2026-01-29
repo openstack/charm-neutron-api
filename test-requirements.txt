@@ -29,3 +29,8 @@ git+https://github.com/openstack-charmers/zaza-openstack-tests.git@stable/zed#eg
 git+https://opendev.org/openstack/tempest.git#egg=tempest
 
 croniter            # needed for charm-rabbitmq-server unit tests
+# Fixes:
+#  File ".../.tox/py3/lib/python3.10/site-packages/pip/_vendor/toml/decoder.py", line 997, in load_array
+#    a[b] = a[b] + ',' + a[b + 1]
+# IndexError: list index out of range
+MarkupSafe<3.0.3
