@@ -401,8 +401,10 @@ class HAProxyContextTest(CharmTestCase):
     @patch.object(charmhelpers.contrib.openstack.context, 'kv')
     @patch('builtins.__import__')
     @patch('builtins.open')
-    def test_context_peers(self, _open, _import, _kv, _log, _rids, _runits,
-                           _rget, _lunit, _config,
+    @patch.object(charmhelpers.contrib.openstack.context,
+                  'get_installed_version')
+    def test_context_peers(self, _get_installed_version, _open, _import, _kv,
+                           _log, _rids, _runits, _rget, _lunit, _config,
                            _get_address_in_network, _get_netmask_for_address,
                            _mkdir, _get_relation_ip, _is_ipv6_disabled):
         healthcheck = [{
@@ -429,6 +431,7 @@ class HAProxyContextTest(CharmTestCase):
         _get_netmask_for_address.return_value = '255.255.255.0'
         _kv().get.return_value = 'abcdefghijklmnopqrstuvwxyz123456'
         _is_ipv6_disabled.return_value = True
+        _get_installed_version.return_value = None
         service_ports = {'neutron-server': [9696, 9686]}
         ctxt_data = {
             'local_host': '127.0.0.1',
@@ -499,11 +502,11 @@ class NeutronCCContextTest(CharmTestCase):
                  "queens": ["B"],
                  "ussuri": ["C"]}
         p = context.NeutronCCContext().get_service_plugins('train', plugs)
-        self.assertEquals(p, ["B"])
+        self.assertEqual(p, ["B"])
         p = context.NeutronCCContext().get_service_plugins('ussuri', plugs)
-        self.assertEquals(p, ["C"])
+        self.assertEqual(p, ["C"])
         p = context.NeutronCCContext().get_service_plugins('wallaby', plugs)
-        self.assertEquals(p, ["C"])
+        self.assertEqual(p, ["C"])
 
     @patch.object(context, 'NeutronLoadBalancerContext')
     @patch.object(context.NeutronCCContext, 'network_manager')
