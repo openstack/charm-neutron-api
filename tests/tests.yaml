@@ -9,7 +9,6 @@ smoke_bundles:
 dev_bundles:
   - jammy-yoga
   - jammy-zed
-  - kinetic-zed
 
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
@@ -27,5 +26,3 @@ tests_options:
     application: neutron-api
   policyd:
     service: neutron
-  force_deploy:
-    - kinetic-zed
