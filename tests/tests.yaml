@@ -2,7 +2,6 @@ charm_name: neutron-api
 
 gate_bundles:
   - focal-xena
-  - impish-xena
 
 smoke_bundles:
   - focal-xena
@@ -28,5 +27,4 @@ tests_options:
   policyd:
     service: neutron
   force_deploy:
-    - impish-xena
     - jammy-yoga
