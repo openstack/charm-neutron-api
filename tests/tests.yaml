@@ -8,7 +8,6 @@ smoke_bundles:
 
 dev_bundles:
   - jammy-antelope
-  - lunar-antelope
 
 tests:
   - zaza.openstack.charm_tests.neutron.tests.NeutronApiTest
@@ -26,5 +25,3 @@ tests_options:
     application: neutron-api
   policyd:
     service: neutron
-  force_deploy:
-    - lunar-antelope
