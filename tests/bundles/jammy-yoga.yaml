@@ -23,7 +23,7 @@ applications:
       source: *openstack-origin
     channel: 3.9/edge
   neutron-api:
-    charm: ../../charm-neutron-api_ubuntu@22.04-amd64.charm
+    charm: ../../neutron-api_ubuntu@22.04-amd64.charm
     num_units: 1
     options:
       manage-neutron-plugin-legacy-mode: True
